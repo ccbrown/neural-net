@@ -1,0 +1,8 @@
+[package]
+name = "fashion-mnist"
+version = "0.1.0"
+authors = ["Christopher Brown <ccbrown112@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+neural_net = { path = "../.." }
