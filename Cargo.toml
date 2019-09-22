@@ -7,3 +7,5 @@ edition = "2018"
 [dependencies]
 reqwest = "0.9.20"
 simple-error = "0.2.1"
+ndarray = "0.12.1"
+rand = "0.7.2"
