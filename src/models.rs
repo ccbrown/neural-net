@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use super::{Layer, Shape};
+use super::{Dataset, Layer, Shape};
 
 pub struct Sequential {
     output_shape: Shape,
@@ -17,9 +17,7 @@ impl Sequential {
         self.output_shape
     }
 
-    pub fn add_layer<T>(&mut self, layer: T) -> Result<(), Box<Error>>
-        where T: Layer
-    {
+    pub fn add_layer<L: Layer>(&mut self, layer: L) -> Result<(), Box<Error>> {
         if self.output_shape != layer.input_shape() {
             bail!("invalid input shape for layer. got {}, expected {}", layer.input_shape(), self.output_shape)
         }
@@ -38,7 +36,7 @@ impl Sequential {
 pub struct CompiledSequential {}
 
 impl CompiledSequential {
-    pub fn fit(&mut self) {
+    pub fn fit<D: Dataset>(&mut self, _dataset: D) {
         // TODO
     }
 }

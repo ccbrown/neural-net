@@ -6,10 +6,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
     static TRAINING_IMAGES: &str = "dataset/training-images.gz";
     static TRAINING_LABELS: &str = "dataset/training-labels.gz";
 
-    neural_net::util::download(neural_net::FASHION_MNIST_TEST_IMAGES_URL, TEST_IMAGES)?;
-    neural_net::util::download(neural_net::FASHION_MNIST_TEST_LABELS_URL, TEST_LABELS)?;
-    neural_net::util::download(neural_net::FASHION_MNIST_TRAINING_IMAGES_URL, TRAINING_IMAGES)?;
-    neural_net::util::download(neural_net::FASHION_MNIST_TRAINING_LABELS_URL, TRAINING_LABELS)?;
+    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_IMAGES_URL, TEST_IMAGES)?;
+    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_LABELS_URL, TEST_LABELS)?;
+    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_IMAGES_URL, TRAINING_IMAGES)?;
+    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_LABELS_URL, TRAINING_LABELS)?;
 
     let mut model = neural_net::models::Sequential::new(neural_net::Shape::D2(28, 28));
     model.add_layer(neural_net::layers::Flatten{
@@ -28,8 +28,13 @@ fn main() -> Result<(), Box<std::error::Error>> {
         kernel_initializer: neural_net::initializers::glorot_uniform,
     })?;
 
-    let _model = model.compile();
-    // TODO
+    let mut model = model.compile();
+
+    let training_images = std::fs::File::open(TRAINING_IMAGES)?;
+    let training_labels = std::fs::File::open(TRAINING_LABELS)?;
+    let training_dataset = neural_net::datasets::MNIST::new(training_images, training_labels)?;
+
+    model.fit(training_dataset);
 
     Ok(())
 }

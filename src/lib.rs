@@ -1,3 +1,4 @@
+extern crate byteorder;
 extern crate ndarray;
 extern crate rand;
 extern crate reqwest;
@@ -46,13 +47,17 @@ pub trait LayerInstance {
     ;
 }
 
+pub trait Dataset {
+    fn len(&self) -> usize;
+
+    fn input(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<Error>>;
+
+    fn target(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<Error>>;
+}
+
 pub mod activations;
+pub mod datasets;
 pub mod initializers;
 pub mod layers;
 pub mod models;
 pub mod util;
-
-pub static FASHION_MNIST_TRAINING_IMAGES_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/train-images-idx3-ubyte.gz";
-pub static FASHION_MNIST_TRAINING_LABELS_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/train-labels-idx1-ubyte.gz";
-pub static FASHION_MNIST_TEST_IMAGES_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/t10k-images-idx3-ubyte.gz";
-pub static FASHION_MNIST_TEST_LABELS_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/t10k-labels-idx1-ubyte.gz";
