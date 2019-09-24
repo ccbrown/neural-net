@@ -2,29 +2,27 @@ use std::fmt;
 
 use super::{Expr, ExprImpl};
 
-pub struct Exp {
-    pub power: Expr,
+pub struct Ln {
+    pub expr: Expr,
 }
 
-impl ExprImpl for Exp {
+impl ExprImpl for Ln {
     fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
         // TODO: matrix-by-scalar
-        self.power.gradient(v, i) * Expr::new(Exp{
-            power: self.power.clone(),
-        })
+        self.expr.gradient(v, i) / self.expr.clone()
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
-        self.power.eval().mapv(|v| v.exp())
+        self.expr.eval().mapv(|v| v.ln())
     }
 
     fn shape(&self) -> ndarray::IxDyn {
-        self.power.shape()
+        self.expr.shape()
     }
 }
 
-impl fmt::Display for Exp {
+impl fmt::Display for Ln {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(e^{})", self.power)
+        write!(f, "ln({})", self.expr)
     }
 }

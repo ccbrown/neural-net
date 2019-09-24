@@ -1,4 +1,3 @@
-use std::cell::Cell;
 use std::rc::Rc;
 
 use ndarray::Dimension;
@@ -30,14 +29,14 @@ pub struct FlattenInstance {
 }
 
 impl LayerInstance for FlattenInstance {
-    fn expression(&self, input: ndarray::ArrayViewD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr> {
-        input.into_shape(ndarray::Ix1(self.output_size)).unwrap().to_owned().into_dyn()
+    fn expression(&self, input: algebra::Expr) -> algebra::Expr {
+        algebra::reshape(input, ndarray::Ix1(self.output_size).into_dyn())
     }
 }
 
 // Dense takes a 1-dimensional input and outputs a 1-dimensional output.
 pub struct Dense<Activation, KernelInitializer>
-    where Activation: Fn(ndarray::ArrayD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr> + 'static,
+    where Activation: Fn(algebra::Expr) -> algebra::Expr + 'static,
           KernelInitializer: Fn(usize, usize) -> ndarray::Array2<f32>
 {
     pub activation: Activation,
@@ -59,10 +58,13 @@ impl TrainableVariablesBuilder {
         }
     }
 
-    fn append(&mut self, init: f32) -> algebra::Expr {
+    fn append<S1, D>(&mut self, init: ndarray::ArrayBase<S1, D>) -> algebra::Expr
+        where S1: ndarray::Data<Elem=f32>,
+              D: ndarray::Dimension,
+    {
         let tv = super::TrainableVariable{
-            name: format!("{}/v{}", self.namespace, self.trainable_variables.len()),
-            value: Rc::new(Cell::new(init)),
+            name: format!("{}.v{}", self.namespace, self.trainable_variables.len()),
+            value: Rc::new(algebra::VariableValue::new(init)),
         };
         self.trainable_variables.push(tv.clone());
         algebra::v(tv.name, tv.value)
@@ -70,15 +72,15 @@ impl TrainableVariablesBuilder {
 }
 
 impl<Activation, KernelInitializer> Layer for Dense<Activation, KernelInitializer>
-    where Activation: Fn(ndarray::ArrayD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr> + Clone + 'static,
+    where Activation: Fn(algebra::Expr) -> algebra::Expr + Clone + 'static,
           KernelInitializer: Fn(usize, usize) -> ndarray::Array2<f32>
 {
     fn init(&self, namespace: &str) -> Box<LayerInstance> {
         let mut tv_builder = TrainableVariablesBuilder::new(namespace);
         Box::new(DenseInstance{
             activation: self.activation.clone(),
-            biases: ndarray::Array::zeros(self.output_size).mapv(|x| tv_builder.append(x)),
-            weights: (self.kernel_initializer)(self.output_size, self.input_size).mapv(|x| tv_builder.append(x)),
+            biases: tv_builder.append(ndarray::Array::zeros(self.output_size)),
+            weights: tv_builder.append((self.kernel_initializer)(self.output_size, self.input_size)),
             trainable_variables: tv_builder.trainable_variables,
         })
     }
@@ -93,21 +95,19 @@ impl<Activation, KernelInitializer> Layer for Dense<Activation, KernelInitialize
 }
 
 pub struct DenseInstance<Activation>
-    where Activation: Fn(ndarray::ArrayD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr>
+    where Activation: Fn(algebra::Expr) -> algebra::Expr
 {
     activation: Activation,
-    biases: ndarray::Array1<algebra::Expr>,
-    weights: ndarray::Array2<algebra::Expr>,
+    biases: algebra::Expr,
+    weights: algebra::Expr,
     trainable_variables: Vec<super::TrainableVariable>,
 }
 
 impl<Activation> LayerInstance for DenseInstance<Activation>
-    where Activation: Fn(ndarray::ArrayD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr>
+    where Activation: Fn(algebra::Expr) -> algebra::Expr
 {
-    fn expression(&self, input: ndarray::ArrayViewD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr> {
-        let input = input.into_dimensionality::<ndarray::Ix1>().unwrap();
-        let output = algebra::mat_vec_mul(&self.weights, &input) + self.biases.clone();
-        (self.activation)(output.into_dyn())
+    fn expression(&self, input: algebra::Expr) -> algebra::Expr {
+        (self.activation)(algebra::matvecmul(self.weights.clone(), input) + self.biases.clone())
     }
 
     fn trainable_variables(&self) -> &[super::TrainableVariable] {

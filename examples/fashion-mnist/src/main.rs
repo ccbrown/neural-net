@@ -4,12 +4,17 @@ extern crate neural_net;
 
 use ndarray::Dimension;
 
-fn main() -> Result<(), Box<std::error::Error>> {
-    static TEST_IMAGES_GZ: &str = "dataset/test-images.gz";
-    static TEST_LABELS_GZ: &str = "dataset/test-labels.gz";
-    static TRAINING_IMAGES_GZ: &str = "dataset/training-images.gz";
-    static TRAINING_LABELS_GZ: &str = "dataset/training-labels.gz";
+static TEST_IMAGES_GZ: &str = "dataset/test-images.gz";
+static TEST_LABELS_GZ: &str = "dataset/test-labels.gz";
+static TRAINING_IMAGES_GZ: &str = "dataset/training-images.gz";
+static TRAINING_LABELS_GZ: &str = "dataset/training-labels.gz";
 
+static CLASS_NAMES: [&str; 10] = [
+    "T-shirt/top", "Trouser", "Pullover", "Dress", "Coat", "Sandal", "Shirt", "Sneaker", "Bag",
+    "Ankle boot"
+];
+
+fn main() -> Result<(), Box<std::error::Error>> {
     neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_IMAGES_GZ_URL, TEST_IMAGES_GZ)?;
     neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_LABELS_GZ_URL, TEST_LABELS_GZ)?;
     neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_IMAGES_GZ_URL, TRAINING_IMAGES_GZ)?;
@@ -32,11 +37,11 @@ fn main() -> Result<(), Box<std::error::Error>> {
         kernel_initializer: neural_net::initializers::glorot_uniform,
     })?;
 
-    let mut model = model.compile();
-
     let training_images = flate2::read::GzDecoder::new(std::fs::File::open(TRAINING_IMAGES_GZ)?);
     let training_labels = flate2::read::GzDecoder::new(std::fs::File::open(TRAINING_LABELS_GZ)?);
-    let mut training_dataset = neural_net::datasets::MNIST::new(training_images, training_labels)?;
+    let mut training_dataset = neural_net::datasets::MNIST::new(training_images, training_labels)?.to_one_hot(CLASS_NAMES.len());
+
+    let mut model = model.compile(training_dataset.target_shape(), neural_net::losses::categorical_cross_entropy);
 
     model.fit(&mut training_dataset, 5)?;
 

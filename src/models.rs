@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::cell::Cell;
 use std::rc::Rc;
 
 use super::{algebra, Dataset, Layer};
@@ -33,33 +32,33 @@ impl Sequential {
         Ok(())
     }
 
-    pub fn compile(self) -> CompiledSequential {
-        let input_values = ndarray::Array::from_shape_fn(self.input_shape, |_| Rc::new(Cell::new(0.0)));
-        let mut i = 0;
-        let input = input_values.mapv(|v| {
-            let ret = algebra::v(format!("i{}", i), v);
-            i += 1;
-            ret
-        });
+    pub fn compile<D, L>(self, target_shape: D, loss_function: L) -> CompiledSequential
+        where D: ndarray::Dimension,
+              L: Fn(algebra::Expr, algebra::Expr) -> algebra::Expr + 'static,
+    {
+        let input_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(self.input_shape)));
+        let input = algebra::v("i", input_value.clone());
         let mut output = input.clone();
         let mut trainable_variables = Vec::new();
         for (i, layer) in self.layers.iter().enumerate() {
             let instance = layer.init(format!("l{}", i).as_str());
             trainable_variables.extend_from_slice(instance.trainable_variables());
-            output = instance.expression(output.view());
+            output = instance.expression(output);
         }
-        // TODO: actual loss formula
-        let loss = output.fold(algebra::c(0.0), |loss, e| loss + e.clone());
+        let target_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(target_shape)));
+        let target = algebra::v("t", target_value.clone());
         CompiledSequential{
-            input: input_values,
-            loss: loss,
+            input: input_value,
+            target: target_value,
+            loss: loss_function(output, target),
             trainable_variables: trainable_variables,
         }
     }
 }
 
 pub struct CompiledSequential {
-    input: ndarray::ArrayD<Rc<Cell<f32>>>,
+    input: Rc<algebra::VariableValue>,
+    target: Rc<algebra::VariableValue>,
     loss: algebra::Expr,
     trainable_variables: Vec<super::TrainableVariable>,
 }
@@ -71,10 +70,8 @@ impl CompiledSequential {
             println!("epoch {}", i);
             // TODO: shuffle
             for j in 0..dataset.len() {
-                let input = dataset.input(j)?;
-                for (i, v) in self.input.indexed_iter_mut() {
-                    (*v).set(input[i]);
-                }
+                (*self.input).set(dataset.input(j)?);
+                (*self.target).set(dataset.target(j)?);
                 println!("{}: {}", j, self.loss.eval());
             }
         }

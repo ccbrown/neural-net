@@ -5,13 +5,12 @@ extern crate reqwest;
 #[macro_use] extern crate simple_error;
 
 use std::error::Error;
-use std::cell::Cell;
 use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct TrainableVariable {
     pub name: String,
-    pub value: Rc<Cell<f32>>,
+    pub value: Rc<algebra::VariableValue>,
 }
 
 pub trait Layer {
@@ -24,10 +23,10 @@ pub trait Layer {
 
 pub trait LayerInstance {
     fn eval(&self, input: ndarray::ArrayViewD<f32>) -> ndarray::ArrayD<f32> {
-        self.expression(input.mapv(algebra::c).view()).mapv(|e| e.eval())
+        self.expression(algebra::expr(input)).eval()
     }
 
-    fn expression(&self, input: ndarray::ArrayViewD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr>;
+    fn expression(&self, input: algebra::Expr) -> algebra::Expr;
 
     fn trainable_variables(&self) -> &[TrainableVariable] {
         &[]
@@ -47,5 +46,6 @@ pub mod activations;
 pub mod datasets;
 pub mod initializers;
 pub mod layers;
+pub mod losses;
 pub mod models;
 pub mod util;

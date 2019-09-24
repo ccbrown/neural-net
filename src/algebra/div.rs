@@ -1,21 +1,27 @@
 use std::fmt;
 
-use super::{c, Expr, ExprImpl};
+use super::{Expr, ExprImpl};
 
+// Div performs element-wise division.
 pub struct Div {
     pub num: Expr,
     pub den: Expr,
 }
 
 impl ExprImpl for Div {
-    fn gradient(&self, v: &str) -> Expr {
-        let num = self.num.gradient(v) * self.den.clone() - self.den.gradient(v) * self.num.clone();
+    fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+        // TODO: matrix-by-scalar
+        let num = self.num.gradient(v, i) * self.den.clone() - self.den.gradient(v, i) * self.num.clone();
         let den = self.den.clone() * self.den.clone();
         num / den
     }
 
-    fn eval(&self) -> f32 {
+    fn eval(&self) -> ndarray::ArrayD<f32> {
         self.num.eval() / self.den.eval()
+    }
+
+    fn shape(&self) -> ndarray::IxDyn {
+        self.num.shape()
     }
 }
 
@@ -39,7 +45,7 @@ impl std::ops::Div<Expr> for f32 {
     type Output = Expr;
     fn div(self, rhs: Expr) -> Expr {
         Expr::new(Div{
-            num: c(self),
+            num: super::expr(self),
             den: rhs,
         })
     }

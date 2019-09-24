@@ -2,6 +2,7 @@ use std::error::Error;
 use std::io::Read;
 
 use byteorder::{BigEndian, ReadBytesExt};
+use ndarray::Dimension;
 
 use super::Dataset;
 
@@ -87,6 +88,7 @@ impl<R: Read> Iterator for MNISTLabelFile<R> {
 pub struct MNIST {
     images: Vec<ndarray::ArrayD<f32>>,
     labels: Vec<ndarray::ArrayD<f32>>,
+	target_shape: ndarray::IxDyn,
 }
 
 impl MNIST {
@@ -120,8 +122,27 @@ impl MNIST {
         Ok(MNIST{
             images: images,
             labels: labels,
+			target_shape: ndarray::Ix0().into_dyn(),
         })
     }
+
+    // Transforms the targets into one-hot arrays.
+    pub fn to_one_hot(self, categories: usize) -> MNIST {
+		let labels = self.labels.into_iter().map(|l| {
+            let mut one_hot = ndarray::Array::zeros(categories).into_dyn();
+            one_hot[*l.first().unwrap() as usize] = 1.0;
+            one_hot
+		}).collect();
+		MNIST{
+			images: self.images,
+			labels: labels,
+			target_shape: ndarray::Ix1(categories).into_dyn(),
+		}
+    }
+
+	pub fn target_shape(&self) -> ndarray::IxDyn {
+		self.target_shape.clone()
+	}
 }
 
 impl Dataset for MNIST {

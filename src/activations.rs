@@ -1,15 +1,15 @@
 use super::algebra;
 
-pub fn relu(input: ndarray::ArrayD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr> {
-    input.mapv(|e| algebra::ternary(
-        algebra::cmp(e.clone(), algebra::cmp::Op::Less, algebra::c(0.0)),
-        algebra::c(0.0),
-        e.clone(),
-    ))
+pub fn relu(input: algebra::Expr) -> algebra::Expr {
+    let zeros = algebra::expr(ndarray::Array::zeros(input.shape()));
+    algebra::ternary(
+        algebra::cmp(input.clone(), algebra::cmp::Op::Less, zeros.clone()),
+        zeros,
+        input.clone(),
+    )
 }
 
-pub fn softmax(input: ndarray::ArrayD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr> {
-    let num = input.mapv_into(|x| x.exp());
-    let den = num.fold(algebra::c(0.0), |sum, e| sum + e.clone());
-    num.mapv(|num| num / den.clone())
+pub fn softmax(input: algebra::Expr) -> algebra::Expr {
+    let num = input.exp();
+    num.clone() / num.sum()
 }

@@ -6,14 +6,19 @@ pub mod cmp; pub use cmp::*;
 pub mod div; pub use div::*;
 pub mod exp; pub use exp::*;
 pub mod ternary; pub use ternary::*;
+pub mod ln; pub use ln::*;
+pub mod matvecmul; pub use matvecmul::*;
 pub mod mul; pub use mul::*;
+pub mod reshape; pub use reshape::*;
 pub mod sub; pub use sub::*;
+pub mod sum; pub use sum::*;
 pub mod variable; pub use variable::*;
 pub mod constant; pub use constant::*;
 
 pub trait ExprImpl: fmt::Display {
-    fn gradient(&self, v: &str) -> Expr;
-    fn eval(&self) -> f32;
+    fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr;
+    fn eval(&self) -> ndarray::ArrayD<f32>;
+    fn shape(&self) -> ndarray::IxDyn;
 }
 
 #[derive(Clone)]
@@ -33,15 +38,31 @@ impl Expr {
             power: self.clone(),
         })
     }
+
+    pub fn ln(&self) -> Expr {
+        Expr::new(ln::Ln{
+            expr: self.clone(),
+        })
+    }
+
+    pub fn sum(&self) -> Expr {
+        Expr::new(sum::Sum{
+            expr: self.clone(),
+        })
+    }
 }
 
 impl ExprImpl for Expr {
-    fn gradient(&self, v: &str) -> Expr {
-        self.expr.gradient(v)
+    fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+        self.expr.gradient(v, i)
     }
 
-    fn eval(&self) -> f32 {
+    fn eval(&self) -> ndarray::ArrayD<f32> {
         self.expr.eval()
+    }
+
+    fn shape(&self) -> ndarray::IxDyn {
+        self.expr.shape()
     }
 }
 
@@ -65,26 +86,6 @@ impl fmt::Debug for Expr {
     }
 }
 
-pub fn vec_dot<S1, S2>(a: &ndarray::ArrayBase<S1, ndarray::Ix1>, b: &ndarray::ArrayBase<S2, ndarray::Ix1>) -> Expr
-    where S1: ndarray::Data<Elem=Expr>,
-          S2: ndarray::Data<Elem=Expr>,
-{
-    let mut result = ndarray::Array::from_elem(a.len(), c(0.0));
-    ndarray::Zip::from(&mut result)
-        .and(a)
-        .and(b)
-        .apply(|out, a, b| *out = a.clone() * b.clone());
-    result.fold(c(0.0), |sum, e| sum + e.clone())
+pub fn expr<T: Into<Expr>>(e: T) -> Expr {
+    e.into()
 }
-
-pub fn mat_vec_mul<S1, S2>(a: &ndarray::ArrayBase<S1, ndarray::Ix2>, x: &ndarray::ArrayBase<S2, ndarray::Ix1>) -> ndarray::Array1<Expr>
-    where S1: ndarray::Data<Elem=Expr>,
-          S2: ndarray::Data<Elem=Expr>,
-{
-    let mut result = ndarray::Array::from_elem(a.rows(), c(0.0));
-    ndarray::Zip::from(a.outer_iter())
-        .and(&mut result)
-        .apply(|row, out| *out = vec_dot(&row, &x));
-    result
-}
-

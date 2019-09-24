@@ -2,7 +2,8 @@ use std::fmt;
 
 use super::{Expr, ExprImpl};
 
-// Outputs one of two values based on a condition (1 or 0).
+// Outputs one of two values based on a condition (1 or 0). The true and false expressions must be
+// the same shape. If the condition is not a scalar, it must also be the same shape.
 pub struct Ternary {
     pub condition: Expr,
     pub true_expr: Expr,
@@ -10,20 +11,34 @@ pub struct Ternary {
 }
 
 impl ExprImpl for Ternary {
-    fn gradient(&self, v: &str) -> Expr {
+    fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
         Expr::new(Ternary{
             condition: self.condition.clone(),
-            true_expr: self.true_expr.gradient(v),
-            false_expr: self.false_expr.gradient(v),
+            true_expr: self.true_expr.gradient(v, i),
+            false_expr: self.false_expr.gradient(v, i),
         })
     }
 
-    fn eval(&self) -> f32 {
-        if self.condition.eval() == 0.0 {
-            self.false_expr.eval()
+    fn eval(&self) -> ndarray::ArrayD<f32> {
+        let mut condition = self.condition.eval();
+        if condition.ndim() == 0 {
+            if *condition.first().unwrap() == 0.0 {
+                self.false_expr.eval()
+            } else {
+                self.true_expr.eval()
+            }
         } else {
-            self.true_expr.eval()
+            let false_expr = self.false_expr.eval();
+            let true_expr = self.true_expr.eval();
+            for (i, v) in condition.indexed_iter_mut() {
+                *v = if *v == 0.0 { false_expr[i] } else { true_expr[i] };
+            }
+            condition
         }
+    }
+
+    fn shape(&self) -> ndarray::IxDyn {
+        self.true_expr.shape()
     }
 }
 

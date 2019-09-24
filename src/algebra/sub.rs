@@ -8,12 +8,17 @@ pub struct Sub {
 }
 
 impl ExprImpl for Sub {
-    fn gradient(&self, v: &str) -> Expr {
-        self.left.gradient(v) - self.right.gradient(v)
+    fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+        // TODO: matrix-by-scalar
+        self.left.gradient(v, i) - self.right.gradient(v, i)
     }
 
-    fn eval(&self) -> f32 {
+    fn eval(&self) -> ndarray::ArrayD<f32> {
         self.left.eval() - self.right.eval()
+    }
+
+    fn shape(&self) -> ndarray::IxDyn {
+        self.left.shape()
     }
 }
 
@@ -37,16 +42,16 @@ impl<T: Into<Expr>> std::ops::Sub<T> for Expr {
 mod tests {
     use super::super::*;
 
-    use std::cell::Cell;
+    use ndarray::Dimension;
 
     #[test]
     fn test() {
-        let x = v("x", Rc::new(Cell::new(0.0)));
-        let y = v("y", Rc::new(Cell::new(0.0)));
-        assert_eq!(format!("{}", (x - y).gradient("x")), "(1 - 0)");
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
+        let y = v("y", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
+        assert_eq!(format!("{}", (x - y).gradient("x", &ndarray::Ix0().into_dyn())), "(1 - 0)");
 
-        let x = v("x", Rc::new(Cell::new(0.0)));
-        let y = v("y", Rc::new(Cell::new(0.0)));
-        assert_eq!(format!("{}", (x - y).gradient("y")), "(0 - 1)");
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
+        let y = v("y", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
+        assert_eq!(format!("{}", (x - y).gradient("y", &ndarray::Ix0().into_dyn())), "(0 - 1)");
     }
 }
