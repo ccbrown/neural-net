@@ -5,57 +5,29 @@ extern crate reqwest;
 #[macro_use] extern crate simple_error;
 
 use std::error::Error;
-use std::fmt;
+use std::cell::Cell;
 use std::rc::Rc;
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum Shape {
-    D1(usize),
-    D2(usize, usize),
-}
-
-impl Shape {
-    pub fn size(&self) -> usize {
-        match *self {
-            Shape::D1(x) => x,
-            Shape::D2(x, y) => x * y,
-        }
-    }
-}
-
-impl fmt::Display for Shape {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Shape::D1(x) => write!(f, "({})", x),
-            Shape::D2(x, y) => write!(f, "({}, {})", x, y),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct TrainableVariable {
     pub name: String,
-    pub value: Rc<f32>,
+    pub value: Rc<Cell<f32>>,
 }
 
 pub trait Layer {
-    type Instance;
+    fn init(&self, namespace: &str) -> Box<LayerInstance>;
 
-    fn init(&self, namespace: &str) -> Self::Instance;
+    fn input_shape(&self) -> ndarray::IxDyn;
 
-    fn input_shape(&self) -> Shape;
-
-    fn output_shape(&self) -> Shape;
+    fn output_shape(&self) -> ndarray::IxDyn;
 }
 
 pub trait LayerInstance {
-    fn eval<'a, D: ndarray::Dimension>(&self, input: ndarray::ArrayView<'a, f32, D>) -> ndarray::ArrayD<f32>
-        where D: ndarray::Dimension
-    {
+    fn eval(&self, input: ndarray::ArrayViewD<f32>) -> ndarray::ArrayD<f32> {
         self.expression(input.mapv(algebra::c).view()).mapv(|e| e.eval())
     }
 
-    fn expression<'a, D: ndarray::Dimension>(&self, input: ndarray::ArrayView<'a, algebra::Expr, D>) -> ndarray::ArrayD<algebra::Expr>;
+    fn expression(&self, input: ndarray::ArrayViewD<algebra::Expr>) -> ndarray::ArrayD<algebra::Expr>;
 
     fn trainable_variables(&self) -> &[TrainableVariable] {
         &[]

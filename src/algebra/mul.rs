@@ -47,13 +47,15 @@ impl std::ops::Mul<Expr> for f32 {
 mod tests {
     use super::super::*;
 
+    use std::cell::Cell;
+
     #[test]
     fn test() {
-        let x = v("x", Rc::new(0.0));
+        let x = v("x", Rc::new(Cell::new(0.0)));
         assert_eq!(format!("{}", (3.0 * x).gradient("x")), "((3 * 1) + (x * 0))");
 
-        let x = v("x", Rc::new(0.0));
-        let y = v("y", Rc::new(0.0));
+        let x = v("x", Rc::new(Cell::new(0.0)));
+        let y = v("y", Rc::new(Cell::new(0.0)));
         assert_eq!(format!("{}", (y * x).gradient("x")), "((y * 1) + (x * 0))");
     }
 }

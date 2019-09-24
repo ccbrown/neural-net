@@ -1,11 +1,12 @@
 use std::fmt;
+use std::cell::Cell;
 use std::rc::Rc;
 
 use super::{Constant, Expr, ExprImpl};
 
 pub struct Variable {
     pub name: String,
-    pub value: Rc<f32>,
+    pub value: Rc<Cell<f32>>,
 }
 
 impl ExprImpl for Variable {
@@ -16,7 +17,7 @@ impl ExprImpl for Variable {
     }
 
     fn eval(&self) -> f32 {
-        *self.value
+        (*self.value).get()
     }
 }
 
@@ -26,7 +27,7 @@ impl fmt::Display for Variable {
     }
 }
 
-pub fn v<T: Into<String>>(name: T, init: Rc<f32>) -> Expr {
+pub fn v<T: Into<String>>(name: T, init: Rc<Cell<f32>>) -> Expr {
     Expr::new(Variable{
         name: name.into(),
         value: init,
@@ -37,9 +38,11 @@ pub fn v<T: Into<String>>(name: T, init: Rc<f32>) -> Expr {
 mod tests {
     use super::super::*;
 
+    use std::cell::Cell;
+
     #[test]
     fn test() {
-        let x = v("x", Rc::new(0.0));
+        let x = v("x", Rc::new(Cell::new(0.0)));
         assert_eq!(format!("{}", x.gradient("x")), "1");
     }
 }

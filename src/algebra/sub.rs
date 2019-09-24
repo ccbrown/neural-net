@@ -37,14 +37,16 @@ impl<T: Into<Expr>> std::ops::Sub<T> for Expr {
 mod tests {
     use super::super::*;
 
+    use std::cell::Cell;
+
     #[test]
     fn test() {
-        let x = v("x", Rc::new(0.0));
-        let y = v("y", Rc::new(0.0));
+        let x = v("x", Rc::new(Cell::new(0.0)));
+        let y = v("y", Rc::new(Cell::new(0.0)));
         assert_eq!(format!("{}", (x - y).gradient("x")), "(1 - 0)");
 
-        let x = v("x", Rc::new(0.0));
-        let y = v("y", Rc::new(0.0));
+        let x = v("x", Rc::new(Cell::new(0.0)));
+        let y = v("y", Rc::new(Cell::new(0.0)));
         assert_eq!(format!("{}", (x - y).gradient("y")), "(0 - 1)");
     }
 }
