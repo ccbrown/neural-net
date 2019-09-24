@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 neural_net = { path = "../.." }
+flate2 = "1.0.11"

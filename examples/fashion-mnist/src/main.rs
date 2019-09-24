@@ -1,15 +1,16 @@
+extern crate flate2;
 extern crate neural_net;
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    static TEST_IMAGES: &str = "dataset/test-images.gz";
-    static TEST_LABELS: &str = "dataset/test-labels.gz";
-    static TRAINING_IMAGES: &str = "dataset/training-images.gz";
-    static TRAINING_LABELS: &str = "dataset/training-labels.gz";
+    static TEST_IMAGES_GZ: &str = "dataset/test-images.gz";
+    static TEST_LABELS_GZ: &str = "dataset/test-labels.gz";
+    static TRAINING_IMAGES_GZ: &str = "dataset/training-images.gz";
+    static TRAINING_LABELS_GZ: &str = "dataset/training-labels.gz";
 
-    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_IMAGES_URL, TEST_IMAGES)?;
-    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_LABELS_URL, TEST_LABELS)?;
-    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_IMAGES_URL, TRAINING_IMAGES)?;
-    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_LABELS_URL, TRAINING_LABELS)?;
+    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_IMAGES_GZ_URL, TEST_IMAGES_GZ)?;
+    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_LABELS_GZ_URL, TEST_LABELS_GZ)?;
+    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_IMAGES_GZ_URL, TRAINING_IMAGES_GZ)?;
+    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_LABELS_GZ_URL, TRAINING_LABELS_GZ)?;
 
     let mut model = neural_net::models::Sequential::new(neural_net::Shape::D2(28, 28));
     model.add_layer(neural_net::layers::Flatten{
@@ -30,8 +31,8 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     let mut model = model.compile();
 
-    let training_images = std::fs::File::open(TRAINING_IMAGES)?;
-    let training_labels = std::fs::File::open(TRAINING_LABELS)?;
+    let training_images = flate2::read::GzDecoder::new(std::fs::File::open(TRAINING_IMAGES_GZ)?);
+    let training_labels = flate2::read::GzDecoder::new(std::fs::File::open(TRAINING_LABELS_GZ)?);
     let training_dataset = neural_net::datasets::MNIST::new(training_images, training_labels)?;
 
     model.fit(training_dataset);

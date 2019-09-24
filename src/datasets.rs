@@ -5,10 +5,10 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 use super::Dataset;
 
-pub static FASHION_MNIST_TRAINING_IMAGES_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/train-images-idx3-ubyte.gz";
-pub static FASHION_MNIST_TRAINING_LABELS_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/train-labels-idx1-ubyte.gz";
-pub static FASHION_MNIST_TEST_IMAGES_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/t10k-images-idx3-ubyte.gz";
-pub static FASHION_MNIST_TEST_LABELS_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/t10k-labels-idx1-ubyte.gz";
+pub static FASHION_MNIST_TRAINING_IMAGES_GZ_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/train-images-idx3-ubyte.gz";
+pub static FASHION_MNIST_TRAINING_LABELS_GZ_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/train-labels-idx1-ubyte.gz";
+pub static FASHION_MNIST_TEST_IMAGES_GZ_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/t10k-images-idx3-ubyte.gz";
+pub static FASHION_MNIST_TEST_LABELS_GZ_URL: &str = "https://github.com/zalandoresearch/fashion-mnist/raw/c624d4501d003356ade2a8a1e6c5055ca9f81dd8/data/fashion/t10k-labels-idx1-ubyte.gz";
 
 pub struct MNISTImageFile<R: Read> {
     file: R,
