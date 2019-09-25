@@ -1,4 +1,5 @@
 extern crate byteorder;
+#[macro_use] extern crate log;
 extern crate ndarray;
 extern crate rand;
 extern crate reqwest;

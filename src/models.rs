@@ -90,26 +90,20 @@ pub struct CompiledSequential {
 impl CompiledSequential {
     pub fn fit<D: Dataset>(&mut self, dataset: &mut D, learning_rate: f32, epochs: usize) -> Result<(), Box<Error>> {
         for i in 0..epochs {
-            println!("epoch {}", i);
+            info!("epoch {}", i);
             // TODO: shuffle
             for j in 0..dataset.len() {
                 (*self.input).set(dataset.input(j)?);
                 (*self.target).set(dataset.target(j)?);
                 let mut gradients = Vec::new();
-                let mut n = 0;
                 for tv in self.trainable_variables.iter() {
                     let mut gradient = tv.gradient.clone();
                     for name in self.variable_names.iter() {
                         gradient = gradient.freeze_variable(name.as_str());
                     }
                     gradient = gradient.simplified();
-                    println!("{}\n\n", gradient);
                     let mut dx = ndarray::Array::zeros((*tv.value).shape());
                     gradients.push(ndarray::Array::from_shape_fn(dx.dim(), |i| {
-                        if n % 100 == 0 {
-                            println!("{}", n);
-                        }
-                        n += 1;
                         dx[&i] = 1.0;
                         (*tv.gradient_fv).set(dx.clone());
                         let g = gradient.eval();
@@ -120,7 +114,7 @@ impl CompiledSequential {
                 for (i, tv) in self.trainable_variables.iter_mut().enumerate() {
                     tv.value.set(tv.value.get() - &gradients[i] * learning_rate);
                 }
-                println!("{}: {}", j, self.loss.eval());
+                info!("loss after step {}: {}", j, self.loss.eval());
             }
         }
         Ok(())

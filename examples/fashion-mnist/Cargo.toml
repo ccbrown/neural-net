@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 neural_net = { path = "../.." }
 flate2 = "1.0.11"
-ndarray = "0.12.1"
+blas-src = { version = "0.2.1", default-features = false, features = ["accelerate"] }
+ndarray = { version = "0.12.1", features = ["blas"] }
 log = "0.4.8"
 env_logger = "0.7.0"

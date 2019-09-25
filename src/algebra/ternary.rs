@@ -78,6 +78,9 @@ impl ExprImpl for Ternary {
     fn propagate_constants(&self) -> Expr {
         if self.is_constant() {
             super::expr(self.eval())
+        } else if self.condition.is_constant() {
+            let condition = self.condition.propagate_constants();
+            (condition.clone() * self.true_expr.clone() + (super::expr(1.0) - condition) * self.false_expr.clone()).propagate_constants()
         } else {
             Expr::new(Self{
                 condition: self.condition.propagate_constants(),

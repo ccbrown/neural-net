@@ -1,6 +1,8 @@
 use std::fmt;
 use std::rc::Rc;
 
+use ndarray::Dimension;
+
 use super::{Expr, ExprImpl, VariableValue};
 
 pub struct Sub {
@@ -14,11 +16,21 @@ impl ExprImpl for Sub {
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
-        self.left.eval() - self.right.eval()
+        // ndarray will broadcast a scalar into the larger operand, but only if it's on the right
+        if self.left.shape().ndim() == 0 {
+            self.right.eval() * -1.0 + self.left.eval()
+        } else {
+            self.left.eval() - self.right.eval()
+        }
     }
 
     fn shape(&self) -> ndarray::IxDyn {
-        self.left.shape()
+        let left = self.left.shape();
+        if left.ndim() != 0 {
+            left
+        } else {
+            self.right.shape()
+        }
     }
 
     fn is_constant(&self) -> bool {
@@ -85,6 +97,16 @@ mod tests {
         let x = expr(ndarray::arr1(&[0.0, 1.0,  2.0]));
         let y = expr(ndarray::arr1(&[0.0, 1.0,  5.0]));
         let z = expr(ndarray::arr1(&[0.0, 0.0, -3.0]));
+        assert_eq!((x - y).eval(), z.eval());
+
+        let x = expr(ndarray::arr0(1.0));
+        let y = expr(ndarray::arr1(&[0.0, 1.0, 5.0]));
+        let z = expr(ndarray::arr1(&[1.0, 0.0, -4.0]));
+        assert_eq!((x - y).eval(), z.eval());
+
+        let x = expr(ndarray::arr1(&[0.0, 1.0, 5.0]));
+        let y = expr(ndarray::arr0(1.0));
+        let z = expr(ndarray::arr1(&[-1.0, 0.0, 4.0]));
         assert_eq!((x - y).eval(), z.eval());
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
