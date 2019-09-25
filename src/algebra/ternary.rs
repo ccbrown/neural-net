@@ -1,44 +1,97 @@
 use std::fmt;
 
+use ndarray::Dimension;
+
 use super::{Expr, ExprImpl};
 
-// Outputs one of two values based on a condition (1 or 0). The true and false expressions must be
-// the same shape. If the condition is not a scalar, it must also be the same shape.
+// Outputs one of two values based on a condition (1 or 0). If the true and false expressions are
+// not the same shape, one must be a scalar. If the condition is not a scalar and the true and
+// false expressions are not both scalars, the condition must be the same shape as the larger of
+// the true and false expressions.
 pub struct Ternary {
     pub condition: Expr,
     pub true_expr: Expr,
     pub false_expr: Expr,
 }
 
+fn expand(a: ndarray::ArrayD<f32>, shape: ndarray::IxDyn) -> ndarray::ArrayD<f32> {
+    if a.ndim() < shape.ndim() {
+        ndarray::Array::from_elem(shape, *a.first().unwrap())
+    } else {
+        a
+    }
+}
+
 impl ExprImpl for Ternary {
-    fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+    fn gradient(&self, v: &str) -> Expr {
         Expr::new(Ternary{
             condition: self.condition.clone(),
-            true_expr: self.true_expr.gradient(v, i),
-            false_expr: self.false_expr.gradient(v, i),
+            true_expr: self.true_expr.gradient(v),
+            false_expr: self.false_expr.gradient(v),
         })
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
-        let mut condition = self.condition.eval();
+        let condition = self.condition.eval();
         if condition.ndim() == 0 {
             if *condition.first().unwrap() == 0.0 {
-                self.false_expr.eval()
+                expand(self.false_expr.eval(), self.true_expr.shape())
             } else {
-                self.true_expr.eval()
+                expand(self.true_expr.eval(), self.false_expr.shape())
             }
         } else {
-            let false_expr = self.false_expr.eval();
-            let true_expr = self.true_expr.eval();
-            for (i, v) in condition.indexed_iter_mut() {
-                *v = if *v == 0.0 { false_expr[i] } else { true_expr[i] };
-            }
-            condition
+            let false_condition = 1.0 - &condition;
+            condition * self.true_expr.eval() + false_condition * self.false_expr.eval()
         }
     }
 
     fn shape(&self) -> ndarray::IxDyn {
-        self.true_expr.shape()
+        let true_shape = self.true_expr.shape();
+        if true_shape.ndim() > 0 {
+            true_shape
+        } else {
+            let false_shape = self.false_expr.shape();
+            if false_shape.ndim() > 0 {
+                false_shape
+            } else {
+                self.condition.shape()
+            }
+        }
+    }
+
+    fn is_constant(&self) -> bool {
+        if !self.condition.is_constant() {
+            return false;
+        }
+        let condition = self.condition.eval();
+        let sum = condition.sum();
+        if sum == condition.len() as f32 {
+            self.true_expr.is_constant()
+        } else if sum == 0.0 {
+            self.false_expr.is_constant()
+        } else {
+            self.true_expr.is_constant() && self.false_expr.is_constant()
+        }
+    }
+
+    fn propagate_constants(&self) -> Expr {
+        if self.is_constant() {
+            super::expr(self.eval())
+        } else {
+            Expr::new(Self{
+                condition: self.condition.propagate_constants(),
+                true_expr: self.true_expr.propagate_constants(),
+                false_expr: self.false_expr.propagate_constants(),
+            })
+        }
+    }
+
+    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+        Expr::new(Self{
+            condition: self.condition.freeze_dx(v, i),
+            true_expr: self.true_expr.freeze_dx(v, i),
+            false_expr: self.false_expr.freeze_dx(v, i),
+        })
     }
 }
 
@@ -54,4 +107,18 @@ pub fn ternary(condition: Expr, true_expr: Expr, false_expr: Expr) -> Expr {
         true_expr: true_expr,
         false_expr: false_expr,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::*;
+
+    #[test]
+    fn test() {
+        let c = expr(ndarray::arr1(&[0.0, 1.0]));
+        let t = expr(ndarray::arr1(&[1.0, 2.0]));
+        let f = expr(ndarray::arr0(3.0));
+        let x = expr(ndarray::arr1(&[3.0, 2.0]));
+        assert_eq!(ternary(c, t, f).eval(), x.eval());
+    }
 }

@@ -9,9 +9,8 @@ pub struct Add {
 }
 
 impl ExprImpl for Add {
-    fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
-        // TODO: matrix-by-scalar
-        self.left.gradient(v, i) + self.right.gradient(v, i)
+    fn gradient(&self, v: &str) -> Expr {
+        self.left.gradient(v) + self.right.gradient(v)
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
@@ -20,6 +19,40 @@ impl ExprImpl for Add {
 
     fn shape(&self) -> ndarray::IxDyn {
         self.left.shape()
+    }
+
+    fn is_constant(&self) -> bool {
+        self.left.is_constant() && self.right.is_constant()
+    }
+
+    fn propagate_constants(&self) -> Expr {
+        if self.is_constant() {
+            super::expr(self.eval())
+        } else {
+            if self.left.is_constant() {
+                let left = self.left.eval();
+                if left == ndarray::Array::zeros(left.dim()) {
+                    return self.right.propagate_constants();
+                }
+            }
+            if self.right.is_constant() {
+                let right = self.right.eval();
+                if right == ndarray::Array::zeros(right.dim()) {
+                    return self.left.propagate_constants();
+                }
+            }
+            return Expr::new(Self{
+                left: self.left.propagate_constants(),
+                right: self.right.propagate_constants(),
+            });
+        }
+    }
+
+    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+        Expr::new(Self{
+            left: self.left.freeze_dx(v, i),
+            right: self.right.freeze_dx(v, i),
+        })
     }
 }
 
@@ -49,10 +82,19 @@ mod tests {
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (x + y).gradient("x", &ndarray::Ix0().into_dyn())), "(1 + 0)");
+        assert_eq!((x + y).gradient_by_scalar("x", &ndarray::Ix0().into_dyn()).eval(), ndarray::arr0(1.0).into_dyn());
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (x + y).gradient("y", &ndarray::Ix0().into_dyn())), "(0 + 1)");
+        assert_eq!((x + y).gradient_by_scalar("y", &ndarray::Ix0().into_dyn()).eval(), ndarray::arr0(1.0).into_dyn());
+
+        let x = expr(ndarray::arr1(&[0.0, 1.0, 2.0]));
+        let y = expr(ndarray::arr1(&[0.0, 1.0, 5.0]));
+        let z = expr(ndarray::arr1(&[0.0, 2.0, 7.0]));
+        assert_eq!((x + y).eval(), z.eval());
+
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
+        let y = expr(ndarray::arr1(&[0.0, 1.0, 5.0]));
+        assert_eq!((x + y).gradient_by_scalar("x", &ndarray::Ix1(2).into_dyn()).eval(), ndarray::arr1(&[0.0, 0.0, 1.0]).into_dyn());
     }
 }

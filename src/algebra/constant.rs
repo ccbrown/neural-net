@@ -7,7 +7,7 @@ pub struct Constant {
 }
 
 impl ExprImpl for Constant {
-    fn gradient(&self, _v: &str, _i: &ndarray::IxDyn) -> Expr {
+    fn gradient(&self, _v: &str) -> Expr {
         Expr::new(Constant{
             value: ndarray::Array::zeros(self.value.dim()),
         })
@@ -19,6 +19,18 @@ impl ExprImpl for Constant {
 
     fn shape(&self) -> ndarray::IxDyn {
         self.value.dim()
+    }
+
+    fn is_constant(&self) -> bool {
+        true
+    }
+
+    fn propagate_constants(&self) -> Expr {
+        super::expr(self.eval())
+    }
+
+    fn freeze_dx(&self, _v: &str, _i: &ndarray::IxDyn) -> Expr {
+        super::expr(self.eval())
     }
 }
 
@@ -55,6 +67,6 @@ mod tests {
 
     #[test]
     fn test() {
-        assert_eq!(format!("{}", expr(99.0).gradient("x", &ndarray::Ix0().into_dyn())), "0");
+        assert_eq!(format!("{}", expr(99.0).gradient_by_scalar("x", &ndarray::Ix0().into_dyn())), "0");
     }
 }

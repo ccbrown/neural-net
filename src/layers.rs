@@ -30,7 +30,7 @@ pub struct FlattenInstance {
 
 impl LayerInstance for FlattenInstance {
     fn expression(&self, input: algebra::Expr) -> algebra::Expr {
-        algebra::reshape(input, ndarray::Ix1(self.output_size).into_dyn())
+        input.reshape(ndarray::Ix1(self.output_size))
     }
 }
 

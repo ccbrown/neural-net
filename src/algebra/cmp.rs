@@ -1,7 +1,10 @@
 use std::fmt;
 
+use ndarray::Dimension;
+
 use super::{Expr, ExprImpl};
 
+#[derive(Clone)]
 pub enum Op {
     Less,
     LessOrEqual,
@@ -37,8 +40,8 @@ impl fmt::Display for Op {
     }
 }
 
-// Cmp performs an element-wise comparison and outputs 1 or 0 based on the result. left and right
-// must be the same shape.
+// Cmp performs an element-wise comparison and outputs 1 or 0 based on the result. If left and right
+// are not the same shape, one must be a scalar.
 pub struct Cmp {
     pub left: Expr,
     pub right: Expr,
@@ -46,23 +49,56 @@ pub struct Cmp {
 }
 
 impl ExprImpl for Cmp {
-    fn gradient(&self, _v: &str, _i: &ndarray::IxDyn) -> Expr {
+    fn gradient(&self, _v: &str) -> Expr {
         panic!("gradients are not supported for comparisons")
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
-        let left = self.left.eval();
+        let mut left = self.left.eval();
         let right = self.right.eval();
-        let mut result = ndarray::Array::zeros(left.dim());
-        ndarray::Zip::from(&mut result)
-            .and(&left)
-            .and(&right)
-            .apply(|out, &a, &b| *out = if self.op.cmp(a, b) { 1.0 } else { 0.0 });
-        result
+        if left.ndim() == 0 {
+            let left = *left.first().unwrap();
+            right.mapv(|v| if self.op.cmp(left, v) { 1.0 } else { 0.0 })
+        } else if right.ndim() == 0 {
+            let right = *right.first().unwrap();
+            left.mapv(|v| if self.op.cmp(v, right) { 1.0 } else { 0.0 })
+        } else {
+            left.zip_mut_with(&right, |l, &r| *l = if self.op.cmp(*l, r) { 1.0 } else { 0.0 });
+            left
+        }
     }
 
     fn shape(&self) -> ndarray::IxDyn {
-        self.left.shape()
+        let left = self.left.shape();
+        if left.ndim() != 0 {
+            left
+        } else {
+            self.right.shape()
+        }
+    }
+
+    fn is_constant(&self) -> bool {
+        self.left.is_constant() && self.right.is_constant()
+    }
+
+    fn propagate_constants(&self) -> Expr {
+        if self.is_constant() {
+            super::expr(self.eval())
+        } else {
+            Expr::new(Self{
+                left: self.left.propagate_constants(),
+                right: self.right.propagate_constants(),
+                op: self.op.clone(),
+            })
+        }
+    }
+
+    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+        Expr::new(Self{
+            left: self.left.freeze_dx(v, i),
+            right: self.right.freeze_dx(v, i),
+            op: self.op.clone(),
+        })
     }
 }
 

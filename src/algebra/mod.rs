@@ -16,9 +16,12 @@ pub mod variable; pub use variable::*;
 pub mod constant; pub use constant::*;
 
 pub trait ExprImpl: fmt::Display {
-    fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr;
+    fn gradient(&self, v: &str) -> Expr;
     fn eval(&self) -> ndarray::ArrayD<f32>;
     fn shape(&self) -> ndarray::IxDyn;
+    fn is_constant(&self) -> bool;
+    fn propagate_constants(&self) -> Expr;
+    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr;
 }
 
 #[derive(Clone)]
@@ -31,6 +34,15 @@ impl Expr {
         Expr{
             expr: Rc::new(expr),
         }
+    }
+
+    pub fn gradient_by_matrix(&self, v: &str, shape: ndarray::IxDyn) -> ndarray::ArrayD<Expr> {
+        let du = self.expr.gradient(v).simplified();
+        ndarray::Array::from_shape_fn(shape, |i| du.freeze_dx(v, &i))
+    }
+
+    pub fn gradient_by_scalar(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+        self.expr.gradient(v).freeze_dx(v, &i).simplified()
     }
 
     pub fn exp(&self) -> Expr {
@@ -50,11 +62,22 @@ impl Expr {
             expr: self.clone(),
         })
     }
+
+    pub fn reshape<D: ndarray::Dimension>(&self, shape: D) -> Expr {
+        Expr::new(reshape::Reshape{
+            expr: self.clone(),
+            shape: shape.into_dyn(),
+        })
+    }
+
+    pub fn simplified(&self) -> Expr {
+        self.propagate_constants()
+    }
 }
 
 impl ExprImpl for Expr {
-    fn gradient(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
-        self.expr.gradient(v, i)
+    fn gradient(&self, v: &str) -> Expr {
+        self.expr.gradient(v).simplified()
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
@@ -63,6 +86,18 @@ impl ExprImpl for Expr {
 
     fn shape(&self) -> ndarray::IxDyn {
         self.expr.shape()
+    }
+
+    fn is_constant(&self) -> bool {
+        self.expr.is_constant()
+    }
+
+    fn propagate_constants(&self) -> Expr {
+        self.expr.propagate_constants()
+    }
+
+    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+        self.expr.freeze_dx(v, i)
     }
 }
 

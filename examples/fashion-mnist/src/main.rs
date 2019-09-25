@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     let mut model = model.compile(training_dataset.target_shape(), neural_net::losses::categorical_cross_entropy);
 
-    model.fit(&mut training_dataset, 5)?;
+    model.fit(&mut training_dataset, 0.003, 5)?;
 
     Ok(())
 }
