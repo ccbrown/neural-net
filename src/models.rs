@@ -102,19 +102,17 @@ impl CompiledSequential {
                         gradient = gradient.freeze_variable(name.as_str());
                     }
                     gradient = gradient.simplified();
-                    let mut dx = ndarray::Array::zeros((*tv.value).shape());
-                    gradients.push(ndarray::Array::from_shape_fn(dx.dim(), |i| {
-                        dx[&i] = 1.0;
-                        (*tv.gradient_fv).set(dx.clone());
+                    gradients.push(ndarray::Array::from_shape_fn((*tv.value).shape(), |i| {
+                        (*tv.gradient_fv).mutate(|a| a[&i] = 1.0);
                         let g = gradient.eval();
-                        dx[i] = 0.0;
+                        (*tv.gradient_fv).mutate(|a| a[&i] = 0.0);
                         *g.first().unwrap()
                     }));
                 }
                 for (i, tv) in self.trainable_variables.iter_mut().enumerate() {
                     tv.value.set(tv.value.get() - &gradients[i] * learning_rate);
                 }
-                info!("loss after step {}: {}", j, self.loss.eval());
+                info!("loss for step {}: {}", j, self.loss.eval());
             }
         }
         Ok(())

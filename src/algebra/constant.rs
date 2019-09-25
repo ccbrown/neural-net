@@ -55,7 +55,7 @@ impl<S1, D> From<ndarray::ArrayBase<S1, D>> for Expr
 {
     fn from(a: ndarray::ArrayBase<S1, D>) -> Expr {
         Expr::new(Constant{
-            value: a.to_owned().into_dyn(),
+            value: a.into_owned().into_dyn(),
         })
     }
 }

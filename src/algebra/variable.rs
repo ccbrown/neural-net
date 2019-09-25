@@ -1,5 +1,6 @@
 use std::fmt;
 use std::cell::RefCell;
+use std::ops::DerefMut;
 use std::rc::Rc;
 
 use super::{Constant, Expr, ExprImpl};
@@ -11,14 +12,21 @@ impl VariableValue {
         where S: ndarray::Data<Elem=f32>,
               D: ndarray::Dimension,
     {
-        VariableValue(RefCell::new(a.to_owned().into_dyn()))
+        VariableValue(RefCell::new(a.into_owned().into_dyn()))
     }
 
     pub fn set<S, D>(&self, a: ndarray::ArrayBase<S, D>)
         where S: ndarray::Data<Elem=f32>,
               D: ndarray::Dimension,
     {
-        self.0.replace(a.to_owned().into_dyn());
+        self.0.replace(a.into_owned().into_dyn());
+    }
+
+    pub fn mutate<F>(&self, f: F)
+        where F: FnOnce(&mut ndarray::ArrayD<f32>)
+    {
+        let mut r = self.0.borrow_mut();
+        f(r.deref_mut())
     }
 
     pub fn shape(&self) -> ndarray::IxDyn {
