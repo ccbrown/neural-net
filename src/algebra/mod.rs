@@ -16,12 +16,22 @@ pub mod variable; pub use variable::*;
 pub mod constant; pub use constant::*;
 
 pub trait ExprImpl: fmt::Display {
-    fn gradient(&self, v: &str) -> Expr;
     fn eval(&self) -> ndarray::ArrayD<f32>;
     fn shape(&self) -> ndarray::IxDyn;
     fn is_constant(&self) -> bool;
     fn propagate_constants(&self) -> Expr;
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr;
+
+    // Replaces the variable with the given name with a constant.
+    fn freeze_variable(&self, name: &str) -> Expr;
+
+    // Calculates the gradient with respect to a given variable and returns an expression with an
+    // "f'v" variable in it. The gradient can be completed for a given index within the variable by
+    // setting or freezing the value of f'v and evaluating the expression.
+    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr;
+
+    fn variable_name(&self) -> Option<&str> {
+        None
+    }
 }
 
 #[derive(Clone)]
@@ -36,13 +46,17 @@ impl Expr {
         }
     }
 
-    pub fn gradient_by_matrix(&self, v: &str, shape: ndarray::IxDyn) -> ndarray::ArrayD<Expr> {
-        let du = self.expr.gradient(v).simplified();
-        ndarray::Array::from_shape_fn(shape, |i| du.freeze_dx(v, &i))
-    }
-
-    pub fn gradient_by_scalar(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
-        self.expr.gradient(v).freeze_dx(v, &i).simplified()
+    // Returns the gradient in respect to a given index within a variable.
+    pub fn gradient_by_scalar(&self, v: &Expr, i: &ndarray::IxDyn) -> Expr {
+        if let Some(name) = v.variable_name() {
+            let mut dx = ndarray::Array::zeros(v.shape());
+            dx[i] = 1.0;
+            let dx = Rc::new(VariableValue::new(dx));
+            let dx_name = "f'".to_string() + name;
+            self.gradient(name, &dx).freeze_variable(&dx_name).simplified()
+        } else {
+            panic!("gradient_by_scalar argument must be a variable")
+        }
     }
 
     pub fn exp(&self) -> Expr {
@@ -76,8 +90,8 @@ impl Expr {
 }
 
 impl ExprImpl for Expr {
-    fn gradient(&self, v: &str) -> Expr {
-        self.expr.gradient(v).simplified()
+    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
+        self.expr.gradient(v, fv)
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
@@ -96,8 +110,12 @@ impl ExprImpl for Expr {
         self.expr.propagate_constants()
     }
 
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
-        self.expr.freeze_dx(v, i)
+    fn freeze_variable(&self, name: &str) -> Expr {
+        self.expr.freeze_variable(name)
+    }
+
+    fn variable_name(&self) -> Option<&str> {
+        self.expr.variable_name()
     }
 }
 

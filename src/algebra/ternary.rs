@@ -1,8 +1,9 @@
 use std::fmt;
+use std::rc::Rc;
 
 use ndarray::Dimension;
 
-use super::{Expr, ExprImpl};
+use super::{Expr, ExprImpl, VariableValue};
 
 // Outputs one of two values based on a condition (1 or 0). If the true and false expressions are
 // not the same shape, one must be a scalar. If the condition is not a scalar and the true and
@@ -23,11 +24,11 @@ fn expand(a: ndarray::ArrayD<f32>, shape: ndarray::IxDyn) -> ndarray::ArrayD<f32
 }
 
 impl ExprImpl for Ternary {
-    fn gradient(&self, v: &str) -> Expr {
+    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
         Expr::new(Ternary{
             condition: self.condition.clone(),
-            true_expr: self.true_expr.gradient(v),
-            false_expr: self.false_expr.gradient(v),
+            true_expr: self.true_expr.gradient(v, fv),
+            false_expr: self.false_expr.gradient(v, fv),
         })
     }
 
@@ -86,11 +87,11 @@ impl ExprImpl for Ternary {
         }
     }
 
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+    fn freeze_variable(&self, name: &str) -> Expr {
         Expr::new(Self{
-            condition: self.condition.freeze_dx(v, i),
-            true_expr: self.true_expr.freeze_dx(v, i),
-            false_expr: self.false_expr.freeze_dx(v, i),
+            condition: self.condition.freeze_variable(name),
+            true_expr: self.true_expr.freeze_variable(name),
+            false_expr: self.false_expr.freeze_variable(name),
         })
     }
 }

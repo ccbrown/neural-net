@@ -32,19 +32,16 @@ impl VariableValue {
 
 #[derive(Clone)]
 pub struct Variable {
-    pub is_dx: bool,
     pub name: String,
     pub value: Rc<VariableValue>,
 }
 
 impl ExprImpl for Variable {
-    fn gradient(&self, v: &str) -> Expr {
+    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
         if v == self.name {
-            // a variable is left in place so the chain rule can be used to complete the gradient
             Expr::new(Variable{
-                is_dx: true,
-                name: self.name.clone(),
-                value: self.value.clone(),
+                name: "f'".to_string() + self.name.as_str(),
+                value: fv.clone(),
             })
         } else {
             Expr::new(Constant{
@@ -69,30 +66,27 @@ impl ExprImpl for Variable {
         Expr::new(self.clone())
     }
 
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
-        if v == self.name && self.is_dx {
-            let mut value = ndarray::Array::zeros((*self.value).shape());
-            value[i] = 1.0;
-            super::expr(value)
+    fn freeze_variable(&self, name: &str) -> Expr {
+        if name == self.name {
+            super::expr(self.eval())
         } else {
             Expr::new(self.clone())
         }
+    }
+
+    fn variable_name(&self) -> Option<&str> {
+        Some(self.name.as_str())
     }
 }
 
 impl fmt::Display for Variable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_dx {
-            write!(f, "f'({})", self.name)
-        } else {
-            write!(f, "{}", self.name)
-        }
+        write!(f, "{}", self.name)
     }
 }
 
 pub fn v<T: Into<String>>(name: T, init: Rc<VariableValue>) -> Expr {
     Expr::new(Variable{
-        is_dx: false,
         name: name.into(),
         value: init,
     })
@@ -107,9 +101,9 @@ mod tests {
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", x.gradient_by_scalar("x", &ndarray::Ix0().into_dyn())), "1");
+        assert_eq!(x.gradient_by_scalar(&x, &ndarray::Ix0().into_dyn()).eval(), ndarray::arr0(1.0).into_dyn());
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::Array::zeros(3))));
-        assert_eq!(x.gradient_by_scalar("x", &ndarray::Ix1(1).into_dyn()).eval(), ndarray::arr1(&[0.0, 1.0, 0.0]).into_dyn());
+        assert_eq!(x.gradient_by_scalar(&x, &ndarray::Ix1(1).into_dyn()).eval(), ndarray::arr1(&[0.0, 1.0, 0.0]).into_dyn());
     }
 }

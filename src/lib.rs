@@ -8,7 +8,7 @@ use std::error::Error;
 use std::rc::Rc;
 
 #[derive(Clone)]
-pub struct TrainableVariable {
+pub struct LayerVariable {
     pub name: String,
     pub value: Rc<algebra::VariableValue>,
 }
@@ -28,7 +28,7 @@ pub trait LayerInstance {
 
     fn expression(&self, input: algebra::Expr) -> algebra::Expr;
 
-    fn trainable_variables(&self) -> &[TrainableVariable] {
+    fn variables(&self) -> &[LayerVariable] {
         &[]
     }
 }

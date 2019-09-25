@@ -1,13 +1,14 @@
 use std::fmt;
+use std::rc::Rc;
 
-use super::{Expr, ExprImpl};
+use super::{Expr, ExprImpl, VariableValue};
 
 pub struct Constant {
     pub value: ndarray::ArrayD<f32>,
 }
 
 impl ExprImpl for Constant {
-    fn gradient(&self, _v: &str) -> Expr {
+    fn gradient(&self, _v: &str, _fv: &Rc<VariableValue>) -> Expr {
         Expr::new(Constant{
             value: ndarray::Array::zeros(self.value.dim()),
         })
@@ -29,7 +30,7 @@ impl ExprImpl for Constant {
         super::expr(self.eval())
     }
 
-    fn freeze_dx(&self, _v: &str, _i: &ndarray::IxDyn) -> Expr {
+    fn freeze_variable(&self, _name: &str) -> Expr {
         super::expr(self.eval())
     }
 }
@@ -67,6 +68,7 @@ mod tests {
 
     #[test]
     fn test() {
-        assert_eq!(format!("{}", expr(99.0).gradient_by_scalar("x", &ndarray::Ix0().into_dyn())), "0");
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
+        assert_eq!(format!("{}", expr(99.0).gradient_by_scalar(&x, &ndarray::Ix1(2).into_dyn())), "0");
     }
 }

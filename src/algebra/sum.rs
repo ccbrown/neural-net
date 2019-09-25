@@ -1,6 +1,7 @@
 use std::fmt;
+use std::rc::Rc;
 
-use super::{Expr, ExprImpl};
+use super::{Expr, ExprImpl, VariableValue};
 
 use ndarray::Dimension;
 
@@ -10,8 +11,8 @@ pub struct Sum {
 }
 
 impl ExprImpl for Sum {
-    fn gradient(&self, v: &str) -> Expr {
-        self.expr.gradient(v).sum()
+    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
+        self.expr.gradient(v, fv).sum()
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
@@ -36,9 +37,9 @@ impl ExprImpl for Sum {
         }
     }
 
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+    fn freeze_variable(&self, name: &str) -> Expr {
         Expr::new(Self{
-            expr: self.expr.freeze_dx(v, i),
+            expr: self.expr.freeze_variable(name),
         })
     }
 }
@@ -58,6 +59,6 @@ mod tests {
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
-        assert_eq!(x.sum().gradient_by_scalar("x", &ndarray::Ix2(1, 0).into_dyn()).eval(), ndarray::arr0(1.0).into_dyn());
+        assert_eq!(x.sum().gradient_by_scalar(&x, &ndarray::Ix2(1, 0).into_dyn()).eval(), ndarray::arr0(1.0).into_dyn());
     }
 }

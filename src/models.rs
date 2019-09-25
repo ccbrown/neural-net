@@ -36,32 +36,38 @@ impl Sequential {
         where D: ndarray::Dimension,
               L: Fn(algebra::Expr, algebra::Expr) -> algebra::Expr + 'static,
     {
+        let mut variable_names = vec![];
         let input_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(self.input_shape)));
         let input = algebra::v("i", input_value.clone());
+        variable_names.push("i".to_string());
         let mut output = input.clone();
         let mut trainable_variables = Vec::new();
         for (i, layer) in self.layers.iter().enumerate() {
             let instance = layer.init(format!("l{}", i).as_str());
-            for tv in instance.trainable_variables() {
+            for v in instance.variables() {
+                variable_names.push(v.name.clone());
                 trainable_variables.push(TrainableVariable{
-                    name: tv.name.clone(),
-                    value: tv.value.clone(),
-                    gradient: ndarray::Array::from_elem(tv.value.shape(), algebra::expr(0.0)), // updated below
+                    name: v.name.clone(),
+                    value: v.value.clone(),
+                    gradient: algebra::expr(0.0), // updated below
+                    gradient_fv: Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(v.value.shape()))),
                 });
             }
             output = instance.expression(output);
         }
         let target_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(target_shape)));
         let target = algebra::v("t", target_value.clone());
+        variable_names.push("t".to_string());
         let loss = loss_function(output, target);
         for tv in trainable_variables.iter_mut() {
-            tv.gradient = loss.gradient_by_matrix(tv.name.as_str(), tv.gradient.dim());
+            tv.gradient = loss.gradient(tv.name.as_str(), &tv.gradient_fv);
         }
         CompiledSequential{
             input: input_value,
             target: target_value,
             loss: loss,
             trainable_variables: trainable_variables,
+            variable_names: variable_names,
         }
     }
 }
@@ -69,7 +75,8 @@ impl Sequential {
 struct TrainableVariable {
     name: String,
     value: Rc<algebra::VariableValue>,
-    gradient: ndarray::ArrayD<algebra::Expr>,
+    gradient: algebra::Expr,
+    gradient_fv: Rc<algebra::VariableValue>,
 }
 
 pub struct CompiledSequential {
@@ -77,6 +84,7 @@ pub struct CompiledSequential {
     target: Rc<algebra::VariableValue>,
     loss: algebra::Expr,
     trainable_variables: Vec<TrainableVariable>,
+    variable_names: Vec<String>,
 }
 
 impl CompiledSequential {
@@ -90,12 +98,23 @@ impl CompiledSequential {
                 let mut gradients = Vec::new();
                 let mut n = 0;
                 for tv in self.trainable_variables.iter() {
-                    gradients.push(tv.gradient.mapv(|e| {
+                    let mut gradient = tv.gradient.clone();
+                    for name in self.variable_names.iter() {
+                        gradient = gradient.freeze_variable(name.as_str());
+                    }
+                    gradient = gradient.simplified();
+                    println!("{}\n\n", gradient);
+                    let mut dx = ndarray::Array::zeros((*tv.value).shape());
+                    gradients.push(ndarray::Array::from_shape_fn(dx.dim(), |i| {
                         if n % 100 == 0 {
                             println!("{}", n);
                         }
                         n += 1;
-                        *e.eval().first().unwrap()
+                        dx[&i] = 1.0;
+                        (*tv.gradient_fv).set(dx.clone());
+                        let g = gradient.eval();
+                        dx[i] = 0.0;
+                        *g.first().unwrap()
                     }));
                 }
                 for (i, tv) in self.trainable_variables.iter_mut().enumerate() {

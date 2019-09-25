@@ -1,14 +1,15 @@
 use std::fmt;
+use std::rc::Rc;
 
-use super::{Expr, ExprImpl};
+use super::{Expr, ExprImpl, VariableValue};
 
 pub struct Exp {
     pub power: Expr,
 }
 
 impl ExprImpl for Exp {
-    fn gradient(&self, v: &str) -> Expr {
-        self.power.gradient(v) * Expr::new(Exp{
+    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
+        self.power.gradient(v, fv) * Expr::new(Exp{
             power: self.power.clone(),
         })
     }
@@ -35,9 +36,9 @@ impl ExprImpl for Exp {
         }
     }
 
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+    fn freeze_variable(&self, name: &str) -> Expr {
         Expr::new(Self{
-            power: self.power.freeze_dx(v, i),
+            power: self.power.freeze_variable(name),
         })
     }
 }
@@ -57,6 +58,6 @@ mod tests {
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (2.0 * x).exp().gradient_by_scalar("x", &ndarray::Ix0().into_dyn())), "(2 * exp((2 * x)))");
+        assert_eq!(format!("{}", (2.0 * x.clone()).exp().gradient_by_scalar(&x, &ndarray::Ix0().into_dyn())), "(2 * exp((2 * x)))");
     }
 }

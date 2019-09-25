@@ -1,8 +1,9 @@
 use std::fmt;
+use std::rc::Rc;
 
 use ndarray::Dimension;
 
-use super::{Expr, ExprImpl};
+use super::{Expr, ExprImpl, VariableValue};
 
 // Div performs element-wise division. If the numerator and denominator are not the same shape, one
 // must be a scalar.
@@ -12,8 +13,8 @@ pub struct Div {
 }
 
 impl ExprImpl for Div {
-    fn gradient(&self, v: &str) -> Expr {
-        let num = self.num.gradient(v) * self.den.clone() - self.den.gradient(v) * self.num.clone();
+    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
+        let num = self.num.gradient(v, fv) * self.den.clone() - self.den.gradient(v, fv) * self.num.clone();
         let den = self.den.clone() * self.den.clone();
         num / den
     }
@@ -60,10 +61,10 @@ impl ExprImpl for Div {
         }
     }
 
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+    fn freeze_variable(&self, name: &str) -> Expr {
         Expr::new(Self{
-            num: self.num.freeze_dx(v, i),
-            den: self.den.freeze_dx(v, i),
+            num: self.num.freeze_variable(name),
+            den: self.den.freeze_variable(name),
         })
     }
 }
@@ -103,7 +104,7 @@ mod tests {
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (4.0 / x).gradient_by_scalar("x", &ndarray::Ix0().into_dyn())), "(-4 / (x * x))");
+        assert_eq!(format!("{}", (4.0 / x.clone()).gradient_by_scalar(&x, &ndarray::Ix0().into_dyn())), "(-4 / (x * x))");
 
         let x = expr(ndarray::arr1(&[0.0, 1.0, 6.0]));
         let y = expr(ndarray::arr1(&[1.0, 1.0, 2.0]));
@@ -119,6 +120,6 @@ mod tests {
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr1(&[1.0, 1.0, 5.0]))));
-        assert_eq!((x / y).gradient_by_scalar("x", &ndarray::Ix1(2).into_dyn()).eval(), ndarray::arr1(&[0.0, 0.0, 0.2]).into_dyn());
+        assert_eq!((x.clone() / y).gradient_by_scalar(&x, &ndarray::Ix1(2).into_dyn()).eval(), ndarray::arr1(&[0.0, 0.0, 0.2]).into_dyn());
     }
 }

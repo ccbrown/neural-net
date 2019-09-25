@@ -1,6 +1,7 @@
 use std::fmt;
+use std::rc::Rc;
 
-use super::{Expr, ExprImpl};
+use super::{Expr, ExprImpl, VariableValue};
 
 use ndarray::Dimension;
 
@@ -11,8 +12,8 @@ pub struct MatVecMul {
 }
 
 impl ExprImpl for MatVecMul {
-    fn gradient(&self, v: &str) -> Expr {
-        matvecmul(self.left.clone(), self.right.gradient(v)) + matvecmul(self.left.gradient(v), self.right.clone())
+    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
+        matvecmul(self.left.clone(), self.right.gradient(v, fv)) + matvecmul(self.left.gradient(v, fv), self.right.clone())
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
@@ -55,10 +56,10 @@ impl ExprImpl for MatVecMul {
         }
     }
 
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+    fn freeze_variable(&self, name: &str) -> Expr {
         Expr::new(Self{
-            left: self.left.freeze_dx(v, i),
-            right: self.right.freeze_dx(v, i),
+            left: self.left.freeze_variable(name),
+            right: self.right.freeze_variable(name),
         })
     }
 }
@@ -86,11 +87,11 @@ mod tests {
     fn test() {
         let x = expr(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0]))));
-        assert_eq!(matvecmul(x, y).gradient_by_scalar("y", &ndarray::Ix1(1).into_dyn()).eval(), ndarray::arr1(&[1.0, 3.0]).into_dyn());
+        assert_eq!(matvecmul(x, y.clone()).gradient_by_scalar(&y, &ndarray::Ix1(1).into_dyn()).eval(), ndarray::arr1(&[1.0, 3.0]).into_dyn());
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
         let y = expr(ndarray::arr1(&[3.0, 5.0]));
-        assert_eq!(matvecmul(x, y).gradient_by_scalar("x", &ndarray::Ix2(1, 0).into_dyn()).eval(), ndarray::arr1(&[0.0, 3.0]).into_dyn());
+        assert_eq!(matvecmul(x.clone(), y).gradient_by_scalar(&x, &ndarray::Ix2(1, 0).into_dyn()).eval(), ndarray::arr1(&[0.0, 3.0]).into_dyn());
 
         // [00 01] · [0] = [00 * 0 + 01 * 1]
         // [10 11]   [1]   [10 * 0 + 11 * 1]
@@ -100,6 +101,6 @@ mod tests {
         //         [01 * 1 + 11 * 0]
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
         let y = expr(ndarray::arr1(&[3.0, 5.0]));
-        assert_eq!(matvecmul(x.clone(), matvecmul(x, y)).gradient_by_scalar("x", &ndarray::Ix2(1, 0).into_dyn()).eval(), ndarray::arr1(&[3.0, 14.0]).into_dyn());
+        assert_eq!(matvecmul(x.clone(), matvecmul(x.clone(), y)).gradient_by_scalar(&x, &ndarray::Ix2(1, 0).into_dyn()).eval(), ndarray::arr1(&[3.0, 14.0]).into_dyn());
     }
 }

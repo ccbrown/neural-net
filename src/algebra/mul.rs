@@ -1,8 +1,9 @@
 use std::fmt;
+use std::rc::Rc;
 
 use ndarray::Dimension;
 
-use super::{Expr, ExprImpl};
+use super::{Expr, ExprImpl, VariableValue};
 
 // Mul performs element-wise multiplication. If the numerator and denominator are not the same shape, one
 // must be a scalar.
@@ -12,8 +13,8 @@ pub struct Mul {
 }
 
 impl ExprImpl for Mul {
-    fn gradient(&self, v: &str) -> Expr {
-        self.left.clone() * self.right.gradient(v) + self.right.clone() * self.left.gradient(v)
+    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
+        self.left.clone() * self.right.gradient(v, fv) + self.right.clone() * self.left.gradient(v, fv)
     }
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
@@ -73,10 +74,10 @@ impl ExprImpl for Mul {
         }
     }
 
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+    fn freeze_variable(&self, name: &str) -> Expr {
         Expr::new(Self{
-            left: self.left.freeze_dx(v, i),
-            right: self.right.freeze_dx(v, i),
+            left: self.left.freeze_variable(name),
+            right: self.right.freeze_variable(name),
         })
     }
 }
@@ -116,11 +117,11 @@ mod tests {
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!((3.0 * x).gradient_by_scalar("x", &ndarray::Ix0().into_dyn()).eval(), ndarray::arr0(3.0).into_dyn());
+        assert_eq!((3.0 * x.clone()).gradient_by_scalar(&x, &ndarray::Ix0().into_dyn()).eval(), ndarray::arr0(3.0).into_dyn());
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!((y.clone() * x).gradient_by_scalar("x", &ndarray::Ix0().into_dyn()).eval(), y.eval());
+        assert_eq!((y.clone() * x.clone()).gradient_by_scalar(&x, &ndarray::Ix0().into_dyn()).eval(), y.eval());
 
         let x = expr(ndarray::arr1(&[0.0, 1.0,  2.0]));
         let y = expr(ndarray::arr1(&[0.0, 1.0,  5.0]));
@@ -135,6 +136,6 @@ mod tests {
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 5.0]))));
-        assert_eq!((x * y).gradient_by_scalar("x", &ndarray::Ix1(2).into_dyn()).eval(), ndarray::arr1(&[0.0, 0.0, 5.0]).into_dyn());
+        assert_eq!((x.clone() * y).gradient_by_scalar(&x, &ndarray::Ix1(2).into_dyn()).eval(), ndarray::arr1(&[0.0, 0.0, 5.0]).into_dyn());
     }
 }

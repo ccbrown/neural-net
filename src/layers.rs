@@ -45,16 +45,16 @@ pub struct Dense<Activation, KernelInitializer>
     pub output_size: usize,
 }
 
-struct TrainableVariablesBuilder {
+struct LayerVariablesBuilder {
     namespace: String,
-    trainable_variables: Vec<super::TrainableVariable>,
+    variables: Vec<super::LayerVariable>,
 }
 
-impl TrainableVariablesBuilder {
+impl LayerVariablesBuilder {
     fn new<S: Into<String>>(namespace: S) -> Self {
-        TrainableVariablesBuilder{
+        LayerVariablesBuilder{
             namespace: namespace.into(),
-            trainable_variables: Vec::new(),
+            variables: Vec::new(),
         }
     }
 
@@ -62,12 +62,12 @@ impl TrainableVariablesBuilder {
         where S1: ndarray::Data<Elem=f32>,
               D: ndarray::Dimension,
     {
-        let tv = super::TrainableVariable{
-            name: format!("{}.v{}", self.namespace, self.trainable_variables.len()),
+        let v = super::LayerVariable{
+            name: format!("{}.v{}", self.namespace, self.variables.len()),
             value: Rc::new(algebra::VariableValue::new(init)),
         };
-        self.trainable_variables.push(tv.clone());
-        algebra::v(tv.name, tv.value)
+        self.variables.push(v.clone());
+        algebra::v(v.name, v.value)
     }
 }
 
@@ -76,12 +76,12 @@ impl<Activation, KernelInitializer> Layer for Dense<Activation, KernelInitialize
           KernelInitializer: Fn(usize, usize) -> ndarray::Array2<f32>
 {
     fn init(&self, namespace: &str) -> Box<LayerInstance> {
-        let mut tv_builder = TrainableVariablesBuilder::new(namespace);
+        let mut lv_builder = LayerVariablesBuilder::new(namespace);
         Box::new(DenseInstance{
             activation: self.activation.clone(),
-            biases: tv_builder.append(ndarray::Array::zeros(self.output_size)),
-            weights: tv_builder.append((self.kernel_initializer)(self.output_size, self.input_size)),
-            trainable_variables: tv_builder.trainable_variables,
+            biases: lv_builder.append(ndarray::Array::zeros(self.output_size)),
+            weights: lv_builder.append((self.kernel_initializer)(self.output_size, self.input_size)),
+            variables: lv_builder.variables,
         })
     }
 
@@ -100,7 +100,7 @@ pub struct DenseInstance<Activation>
     activation: Activation,
     biases: algebra::Expr,
     weights: algebra::Expr,
-    trainable_variables: Vec<super::TrainableVariable>,
+    variables: Vec<super::LayerVariable>,
 }
 
 impl<Activation> LayerInstance for DenseInstance<Activation>
@@ -110,8 +110,8 @@ impl<Activation> LayerInstance for DenseInstance<Activation>
         (self.activation)(algebra::matvecmul(self.weights.clone(), input) + self.biases.clone())
     }
 
-    fn trainable_variables(&self) -> &[super::TrainableVariable] {
-        self.trainable_variables.as_slice()
+    fn variables(&self) -> &[super::LayerVariable] {
+        self.variables.as_slice()
     }
 }
 

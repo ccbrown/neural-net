@@ -1,8 +1,9 @@
 use std::fmt;
+use std::rc::Rc;
 
 use ndarray::Dimension;
 
-use super::{Expr, ExprImpl};
+use super::{Expr, ExprImpl, VariableValue};
 
 #[derive(Clone)]
 pub enum Op {
@@ -49,7 +50,7 @@ pub struct Cmp {
 }
 
 impl ExprImpl for Cmp {
-    fn gradient(&self, _v: &str) -> Expr {
+    fn gradient(&self, _v: &str, _fv: &Rc<VariableValue>) -> Expr {
         panic!("gradients are not supported for comparisons")
     }
 
@@ -93,10 +94,10 @@ impl ExprImpl for Cmp {
         }
     }
 
-    fn freeze_dx(&self, v: &str, i: &ndarray::IxDyn) -> Expr {
+    fn freeze_variable(&self, name: &str) -> Expr {
         Expr::new(Self{
-            left: self.left.freeze_dx(v, i),
-            right: self.right.freeze_dx(v, i),
+            left: self.left.freeze_variable(name),
+            right: self.right.freeze_variable(name),
             op: self.op.clone(),
         })
     }
