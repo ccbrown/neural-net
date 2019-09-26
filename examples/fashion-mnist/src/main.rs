@@ -6,8 +6,6 @@ extern crate neural_net;
 
 use ndarray::Dimension;
 
-static TEST_IMAGES_GZ: &str = "dataset/test-images.gz";
-static TEST_LABELS_GZ: &str = "dataset/test-labels.gz";
 static TRAINING_IMAGES_GZ: &str = "dataset/training-images.gz";
 static TRAINING_LABELS_GZ: &str = "dataset/training-labels.gz";
 
@@ -19,8 +17,6 @@ static CLASS_NAMES: [&str; 10] = [
 fn main() -> Result<(), Box<std::error::Error>> {
     env_logger::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_IMAGES_GZ_URL, TEST_IMAGES_GZ)?;
-    neural_net::util::download(neural_net::datasets::FASHION_MNIST_TEST_LABELS_GZ_URL, TEST_LABELS_GZ)?;
     neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_IMAGES_GZ_URL, TRAINING_IMAGES_GZ)?;
     neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_LABELS_GZ_URL, TRAINING_LABELS_GZ)?;
 

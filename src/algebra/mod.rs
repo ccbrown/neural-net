@@ -1,5 +1,8 @@
 use std::fmt;
+use std::collections::HashMap;
 use std::rc::Rc;
+
+use ndarray::Dimension;
 
 pub mod add; pub use add::*;
 pub mod cmp; pub use cmp::*;
@@ -7,31 +10,28 @@ pub mod div; pub use div::*;
 pub mod exp; pub use exp::*;
 pub mod ternary; pub use ternary::*;
 pub mod ln; pub use ln::*;
+pub mod matmul; pub use matmul::*;
 pub mod matvecmul; pub use matvecmul::*;
 pub mod mul; pub use mul::*;
 pub mod reshape; pub use reshape::*;
+pub mod softmax; pub use softmax::*;
 pub mod sub; pub use sub::*;
+pub mod square; pub use square::*;
 pub mod sum; pub use sum::*;
+pub mod transpose; pub use transpose::*;
 pub mod variable; pub use variable::*;
 pub mod constant; pub use constant::*;
+
+pub struct Gradients {
+    pub expressions: HashMap<String, Expr>,
+}
 
 pub trait ExprImpl: fmt::Display {
     fn eval(&self) -> ndarray::ArrayD<f32>;
     fn shape(&self) -> ndarray::IxDyn;
     fn is_constant(&self) -> bool;
     fn propagate_constants(&self) -> Expr;
-
-    // Replaces the variable with the given name with a constant.
-    fn freeze_variable(&self, name: &str) -> Expr;
-
-    // Calculates the gradient with respect to a given variable and returns an expression with an
-    // "f'v" variable in it. The gradient can be completed for a given index within the variable by
-    // setting or freezing the value of f'v and evaluating the expression.
-    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr;
-
-    fn variable_name(&self) -> Option<&str> {
-        None
-    }
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut Gradients);
 }
 
 #[derive(Clone)]
@@ -46,17 +46,37 @@ impl Expr {
         }
     }
 
-    // Returns the gradient in respect to a given index within a variable.
-    pub fn gradient_by_scalar(&self, v: &Expr, i: &ndarray::IxDyn) -> Expr {
-        if let Some(name) = v.variable_name() {
-            let mut dx = ndarray::Array::zeros(v.shape());
-            dx[i] = 1.0;
-            let dx = Rc::new(VariableValue::new(dx));
-            let dx_name = "f'".to_string() + name;
-            self.gradient(name, &dx).freeze_variable(&dx_name).simplified()
-        } else {
-            panic!("gradient_by_scalar argument must be a variable")
-        }
+    pub fn gradients(&self) -> HashMap<String, Expr> {
+        let mut gradients = Gradients{
+            expressions: HashMap::new(),
+        };
+        let output = expr(ndarray::Array::ones(self.shape()));
+        self.accumulate_gradients(output, &mut gradients);
+        gradients.expressions
+    }
+
+    pub fn gradient(&self, v: &str) -> Expr {
+        self.gradients().get(v).unwrap_or(&expr(0.0)).simplified()
+    }
+
+    pub fn max(&self, b: Expr) -> Expr {
+        ternary(
+            cmp(self.clone(), cmp::Op::Less, b.clone()),
+            b,
+            self.clone(),
+        )
+    }
+
+    pub fn softmax(&self) -> Expr {
+        Expr::new(softmax::Softmax{
+            expr: self.clone(),
+        })
+    }
+
+    pub fn square(&self) -> Expr {
+        Expr::new(square::Square{
+            expr: self.clone(),
+        })
     }
 
     pub fn exp(&self) -> Expr {
@@ -77,6 +97,12 @@ impl Expr {
         })
     }
 
+    pub fn transpose(&self) -> Expr {
+        Expr::new(transpose::Transpose{
+            expr: self.clone(),
+        })
+    }
+
     pub fn reshape<D: ndarray::Dimension>(&self, shape: D) -> Expr {
         Expr::new(reshape::Reshape{
             expr: self.clone(),
@@ -90,12 +116,12 @@ impl Expr {
 }
 
 impl ExprImpl for Expr {
-    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
-        self.expr.gradient(v, fv)
-    }
-
     fn eval(&self) -> ndarray::ArrayD<f32> {
-        self.expr.eval()
+        let result = self.expr.eval();
+        if result.dim() != self.shape() {
+            panic!("incorrect result shape for eval. got {:?}, expected {:?}", result.shape(), self.shape());
+        }
+        result
     }
 
     fn shape(&self) -> ndarray::IxDyn {
@@ -107,15 +133,22 @@ impl ExprImpl for Expr {
     }
 
     fn propagate_constants(&self) -> Expr {
-        self.expr.propagate_constants()
+        let result = self.expr.propagate_constants();
+        if result.shape() != self.shape() {
+            panic!("incorrect result shape for propagate_constants. got {:?}, expected {:?}", result.shape(), self.shape());
+        }
+        result
     }
 
-    fn freeze_variable(&self, name: &str) -> Expr {
-        self.expr.freeze_variable(name)
-    }
-
-    fn variable_name(&self) -> Option<&str> {
-        self.expr.variable_name()
+    fn accumulate_gradients(&self, mut output: Expr, gradients: &mut Gradients) {
+        if self.shape().ndim() == 0 && output.shape().ndim() > 0 {
+            // reduce gradients to scalars when our ancestor broadcasts
+            output = output.sum();
+        }
+        if output.shape() != self.shape() {
+            panic!("incorrect output shape for accumulate_gradients. got {:?}, expected {:?}", output.shape(), self.shape());
+        }
+        self.expr.accumulate_gradients(output, gradients)
     }
 }
 

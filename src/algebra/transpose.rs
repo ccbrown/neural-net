@@ -1,18 +1,22 @@
 use std::fmt;
 
+use ndarray::Dimension;
+
 use super::{Expr, ExprImpl};
 
-pub struct Ln {
+pub struct Transpose {
     pub expr: Expr,
 }
 
-impl ExprImpl for Ln {
+impl ExprImpl for Transpose {
     fn eval(&self) -> ndarray::ArrayD<f32> {
-        self.expr.eval().mapv(|v| v.ln())
+        self.expr.eval().t().into_owned()
     }
 
     fn shape(&self) -> ndarray::IxDyn {
-        self.expr.shape()
+        let mut shape = self.expr.shape().clone();
+        shape.slice_mut().reverse();
+        shape
     }
 
     fn is_constant(&self) -> bool {
@@ -30,23 +34,12 @@ impl ExprImpl for Ln {
     }
 
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.expr.accumulate_gradients(output.clone() / self.expr.clone(), gradients);
+        self.expr.accumulate_gradients(output.transpose(), gradients);
     }
 }
 
-impl fmt::Display for Ln {
+impl fmt::Display for Transpose {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ln({})", self.expr)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::*;
-
-    #[test]
-    fn test() {
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (2.0 * x.clone()).ln().gradient("x")), "((1 / (2 * x)) * 2)");
+        write!(f, "transpose({})", self.expr)
     }
 }

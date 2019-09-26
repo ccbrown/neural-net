@@ -34,7 +34,7 @@ impl LayerInstance for FlattenInstance {
     }
 }
 
-// Dense takes a 1-dimensional input and outputs a 1-dimensional output.
+// Dense takes a 1-dimensional input and emits a 1-dimensional output.
 pub struct Dense<Activation, KernelInitializer>
     where Activation: Fn(algebra::Expr) -> algebra::Expr + 'static,
           KernelInitializer: Fn(usize, usize) -> ndarray::Array2<f32>
@@ -58,12 +58,12 @@ impl LayerVariablesBuilder {
         }
     }
 
-    fn append<S1, D>(&mut self, init: ndarray::ArrayBase<S1, D>) -> algebra::Expr
+    fn append<S1, D>(&mut self, name: &str, init: ndarray::ArrayBase<S1, D>) -> algebra::Expr
         where S1: ndarray::Data<Elem=f32>,
               D: ndarray::Dimension,
     {
         let v = super::LayerVariable{
-            name: format!("{}.v{}", self.namespace, self.variables.len()),
+            name: format!("{}.{}", self.namespace, name),
             value: Rc::new(algebra::VariableValue::new(init)),
         };
         self.variables.push(v.clone());
@@ -79,8 +79,8 @@ impl<Activation, KernelInitializer> Layer for Dense<Activation, KernelInitialize
         let mut lv_builder = LayerVariablesBuilder::new(namespace);
         Box::new(DenseInstance{
             activation: self.activation.clone(),
-            biases: lv_builder.append(ndarray::Array::zeros(self.output_size)),
-            weights: lv_builder.append((self.kernel_initializer)(self.output_size, self.input_size)),
+            biases: lv_builder.append("b", ndarray::Array::zeros(self.output_size)),
+            weights: lv_builder.append("w", (self.kernel_initializer)(self.output_size, self.input_size)),
             variables: lv_builder.variables,
         })
     }
@@ -118,6 +118,7 @@ impl<Activation> LayerInstance for DenseInstance<Activation>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::*;
 
     #[test]
     fn test_flatten() {
@@ -137,5 +138,38 @@ mod tests {
             input_size: 16,
             output_size: 4,
         }.init("l").eval(a.into_dyn().view()), ndarray::Array::ones(4).into_dyn());
+    }
+
+    #[test]
+    fn test_dense_gradients() {
+        let input = algebra::v("i", Rc::new(algebra::VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
+        let l = Dense{
+            activation: super::super::activations::softmax,
+            kernel_initializer: super::super::initializers::zeros,
+            input_size: 3,
+            output_size: 3,
+        }.init("l").expression(input);
+        let loss = losses::categorical_cross_entropy(l.clone(), algebra::expr(ndarray::arr1(&[0.0, 0.0, 1.0])));
+
+        // import tensorflow as tf
+        // sess = tf.compat.v1.Session()
+        // input = tf.constant([[0.0, 1.0, 2.0]])
+        // l = tf.layers.dense(input, 3, activation=tf.nn.softmax, kernel_initializer=tf.zeros_initializer())
+        // loss = -tf.reduce_sum(tf.constant([0.0, 0.0, 1.0]) * tf.log(l))
+        // sess.run(tf.compat.v1.global_variables_initializer())
+
+        // sess.run(loss)
+        assert_eq!(loss.eval(), ndarray::arr0(1.0986123).into_dyn());
+
+        // sess.run(l)
+        assert_eq!(l.eval(), ndarray::arr1(&[0.33333334, 0.33333334, 0.33333334]).into_dyn());
+
+        // sess.run(tf.gradients(l, tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=tf.get_variable_scope().name)))
+        assert_eq!(l.gradient("l.b").eval(), ndarray::arr1(&[0.0, 0.0, 0.0]).into_dyn());
+        assert_eq!(l.gradient("l.w").eval(), ndarray::arr2(&[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]).into_dyn());
+
+        // sess.run(tf.gradients(loss, tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=tf.get_variable_scope().name)))
+        assert_eq!(loss.gradient("l.b").eval(), ndarray::arr1(&[0.33333334, 0.33333334, -0.6666667]).into_dyn());
+        assert_eq!(loss.gradient("l.w").eval(), ndarray::arr2(&[[0.0, 0.33333334, 0.6666667], [0.0, 0.33333334, 0.6666667], [0.0, -0.6666667, -1.3333334]]).into_dyn());
     }
 }

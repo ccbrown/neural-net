@@ -1,19 +1,13 @@
 use std::fmt;
-use std::rc::Rc;
 
-use super::{Expr, ExprImpl, VariableValue};
+use super::{Expr, ExprImpl};
 
+#[derive(Clone)]
 pub struct Exp {
     pub power: Expr,
 }
 
 impl ExprImpl for Exp {
-    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
-        self.power.gradient(v, fv) * Expr::new(Exp{
-            power: self.power.clone(),
-        })
-    }
-
     fn eval(&self) -> ndarray::ArrayD<f32> {
         self.power.eval().mapv(|v| v.exp())
     }
@@ -36,10 +30,8 @@ impl ExprImpl for Exp {
         }
     }
 
-    fn freeze_variable(&self, name: &str) -> Expr {
-        Expr::new(Self{
-            power: self.power.freeze_variable(name),
-        })
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+        self.power.accumulate_gradients(output.clone() * Expr::new(self.clone()), gradients);
     }
 }
 
@@ -53,11 +45,12 @@ impl fmt::Display for Exp {
 mod tests {
     use super::super::*;
 
-    use ndarray::Dimension;
-
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (2.0 * x.clone()).exp().gradient_by_scalar(&x, &ndarray::Ix0().into_dyn())), "(2 * exp((2 * x)))");
+        assert_eq!(format!("{}", (2.0 * x.clone()).exp().gradient("x")), "(exp((2 * x)) * 2)");
+
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 0.0, 0.0]))));
+        assert_eq!(x.exp().gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn());
     }
 }

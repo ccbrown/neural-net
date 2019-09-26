@@ -22,7 +22,7 @@ model = keras.Sequential([
     keras.layers.Dense(10, activation=tf.nn.softmax)
 ])
 
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='sgd', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 model.summary()
 
 model.fit(train_images, train_labels, epochs=5)

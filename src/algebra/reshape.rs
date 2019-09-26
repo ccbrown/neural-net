@@ -1,7 +1,6 @@
 use std::fmt;
-use std::rc::Rc;
 
-use super::{Expr, ExprImpl, VariableValue};
+use super::{Expr, ExprImpl};
 
 pub struct Reshape {
     pub expr: Expr,
@@ -9,10 +8,6 @@ pub struct Reshape {
 }
 
 impl ExprImpl for Reshape {
-    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
-        self.expr.gradient(v, fv).reshape(self.shape.clone())
-    }
-
     fn eval(&self) -> ndarray::ArrayD<f32> {
         self.expr.eval().into_shape(self.shape.clone()).unwrap()
     }
@@ -36,11 +31,8 @@ impl ExprImpl for Reshape {
         }
     }
 
-    fn freeze_variable(&self, name: &str) -> Expr {
-        Expr::new(Self{
-            expr: self.expr.freeze_variable(name),
-            shape: self.shape.clone(),
-        })
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+        self.expr.accumulate_gradients(output.reshape(self.expr.shape()), gradients);
     }
 }
 
@@ -54,11 +46,9 @@ impl fmt::Display for Reshape {
 mod tests {
     use super::super::*;
 
-    use ndarray::Dimension;
-
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
-        assert_eq!(x.reshape(ndarray::Ix1(4)).gradient_by_scalar(&x, &ndarray::Ix2(1, 0).into_dyn()).eval(), ndarray::arr1(&[0.0, 0.0, 1.0, 0.0]).into_dyn());
+        assert_eq!(x.reshape(ndarray::Ix1(4)).gradient("x").eval(), ndarray::arr2(&[[1.0, 1.0], [1.0, 1.0]]).into_dyn());
     }
 }

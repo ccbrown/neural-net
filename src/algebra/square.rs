@@ -2,13 +2,14 @@ use std::fmt;
 
 use super::{Expr, ExprImpl};
 
-pub struct Ln {
+pub struct Square {
     pub expr: Expr,
 }
 
-impl ExprImpl for Ln {
+impl ExprImpl for Square {
     fn eval(&self) -> ndarray::ArrayD<f32> {
-        self.expr.eval().mapv(|v| v.ln())
+        let v = self.expr.eval();
+        &v * &v
     }
 
     fn shape(&self) -> ndarray::IxDyn {
@@ -23,30 +24,19 @@ impl ExprImpl for Ln {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            Expr::new(Self{
+            return Expr::new(Self{
                 expr: self.expr.propagate_constants(),
-            })
+            });
         }
     }
 
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.expr.accumulate_gradients(output.clone() / self.expr.clone(), gradients);
+        self.expr.accumulate_gradients(output.clone() * 2.0 * self.expr.clone(), gradients);
     }
 }
 
-impl fmt::Display for Ln {
+impl fmt::Display for Square {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ln({})", self.expr)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::*;
-
-    #[test]
-    fn test() {
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (2.0 * x.clone()).ln().gradient("x")), "((1 / (2 * x)) * 2)");
+        write!(f, "square({})", self.expr)
     }
 }

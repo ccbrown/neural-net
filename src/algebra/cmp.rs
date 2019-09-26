@@ -1,9 +1,8 @@
 use std::fmt;
-use std::rc::Rc;
 
 use ndarray::Dimension;
 
-use super::{Expr, ExprImpl, VariableValue};
+use super::{Expr, ExprImpl};
 
 #[derive(Clone)]
 pub enum Op {
@@ -50,10 +49,6 @@ pub struct Cmp {
 }
 
 impl ExprImpl for Cmp {
-    fn gradient(&self, _v: &str, _fv: &Rc<VariableValue>) -> Expr {
-        panic!("gradients are not supported for comparisons")
-    }
-
     fn eval(&self) -> ndarray::ArrayD<f32> {
         let mut left = self.left.eval();
         let right = self.right.eval();
@@ -94,12 +89,8 @@ impl ExprImpl for Cmp {
         }
     }
 
-    fn freeze_variable(&self, name: &str) -> Expr {
-        Expr::new(Self{
-            left: self.left.freeze_variable(name),
-            right: self.right.freeze_variable(name),
-            op: self.op.clone(),
-        })
+    fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) {
+        panic!("gradients are not supported for comparisons")
     }
 }
 

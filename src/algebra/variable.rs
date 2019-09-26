@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::ops::DerefMut;
 use std::rc::Rc;
 
-use super::{Constant, Expr, ExprImpl};
+use super::{Expr, ExprImpl};
 
 pub struct VariableValue(RefCell<ndarray::ArrayD<f32>>);
 
@@ -45,19 +45,6 @@ pub struct Variable {
 }
 
 impl ExprImpl for Variable {
-    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
-        if v == self.name {
-            Expr::new(Variable{
-                name: "f'".to_string() + self.name.as_str(),
-                value: fv.clone(),
-            })
-        } else {
-            Expr::new(Constant{
-                value: ndarray::Array::zeros((*self.value).shape()),
-            })
-        }
-    }
-
     fn eval(&self) -> ndarray::ArrayD<f32> {
         (*self.value).get()
     }
@@ -74,16 +61,11 @@ impl ExprImpl for Variable {
         Expr::new(self.clone())
     }
 
-    fn freeze_variable(&self, name: &str) -> Expr {
-        if name == self.name {
-            super::expr(self.eval())
-        } else {
-            Expr::new(self.clone())
-        }
-    }
-
-    fn variable_name(&self) -> Option<&str> {
-        Some(self.name.as_str())
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+        gradients.expressions.insert(self.name.clone(), match gradients.expressions.get(&self.name) {
+            Some(grad) => grad.clone() + output,
+            None => output,
+        });
     }
 }
 
@@ -104,14 +86,12 @@ pub fn v<T: Into<String>>(name: T, init: Rc<VariableValue>) -> Expr {
 mod tests {
     use super::super::*;
 
-    use ndarray::Dimension;
-
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(x.gradient_by_scalar(&x, &ndarray::Ix0().into_dyn()).eval(), ndarray::arr0(1.0).into_dyn());
+        assert_eq!(x.gradient("x").eval(), ndarray::arr0(1.0).into_dyn());
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::Array::zeros(3))));
-        assert_eq!(x.gradient_by_scalar(&x, &ndarray::Ix1(1).into_dyn()).eval(), ndarray::arr1(&[0.0, 1.0, 0.0]).into_dyn());
+        assert_eq!(x.gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn());
     }
 }

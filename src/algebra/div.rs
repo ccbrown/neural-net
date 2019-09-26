@@ -1,9 +1,8 @@
 use std::fmt;
-use std::rc::Rc;
 
 use ndarray::Dimension;
 
-use super::{Expr, ExprImpl, VariableValue};
+use super::{Expr, ExprImpl};
 
 // Div performs element-wise division. If the numerator and denominator are not the same shape, one
 // must be a scalar.
@@ -13,12 +12,6 @@ pub struct Div {
 }
 
 impl ExprImpl for Div {
-    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
-        let num = self.num.gradient(v, fv) * self.den.clone() - self.den.gradient(v, fv) * self.num.clone();
-        let den = self.den.clone() * self.den.clone();
-        num / den
-    }
-
     fn eval(&self) -> ndarray::ArrayD<f32> {
         let num = self.num.eval();
         let den = self.den.eval();
@@ -26,7 +19,7 @@ impl ExprImpl for Div {
             num / den
         } else if num.ndim() == 0 {
             let shape = den.dim();
-            ndarray::Array::from_elem(shape, *num.first().unwrap()) / den
+            num.broadcast(shape).unwrap().into_owned() / den
         } else {
             let shape = num.dim();
             num / den.broadcast(shape).unwrap()
@@ -61,11 +54,9 @@ impl ExprImpl for Div {
         }
     }
 
-    fn freeze_variable(&self, name: &str) -> Expr {
-        Expr::new(Self{
-            num: self.num.freeze_variable(name),
-            den: self.den.freeze_variable(name),
-        })
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+        self.num.accumulate_gradients(output.clone() / self.den.clone(), gradients);
+        self.den.accumulate_gradients(output.clone() * (-1.0 * self.num.clone() / self.den.square()), gradients);
     }
 }
 
@@ -99,12 +90,10 @@ impl std::ops::Div<Expr> for f32 {
 mod tests {
     use super::super::*;
 
-    use ndarray::Dimension;
-
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (4.0 / x.clone()).gradient_by_scalar(&x, &ndarray::Ix0().into_dyn())), "(-4 / (x * x))");
+        assert_eq!(format!("{}", (4.0 / x.clone()).gradient("x")), "(-4 / square(x))");
 
         let x = expr(ndarray::arr1(&[0.0, 1.0, 6.0]));
         let y = expr(ndarray::arr1(&[1.0, 1.0, 2.0]));
@@ -120,6 +109,10 @@ mod tests {
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr1(&[1.0, 1.0, 5.0]))));
-        assert_eq!((x.clone() / y).gradient_by_scalar(&x, &ndarray::Ix1(2).into_dyn()).eval(), ndarray::arr1(&[0.0, 0.0, 0.2]).into_dyn());
+        assert_eq!((x.clone() / y.clone()).gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 0.2]).into_dyn());
+        assert_eq!((x.clone() / y.clone()).gradient("y").eval(), ndarray::arr1(&[0.0, -1.0, -0.08]).into_dyn());
+
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[1.0, 1.0, 1.0]))));
+        assert_eq!((x.clone() / x.sum()).gradient("x").eval(), ndarray::arr1(&[0.0, 0.0, 0.0]).into_dyn());
     }
 }

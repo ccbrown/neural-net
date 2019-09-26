@@ -1,9 +1,8 @@
 use std::fmt;
-use std::rc::Rc;
-
-use super::{Expr, ExprImpl, VariableValue};
 
 use ndarray::Dimension;
+
+use super::{Expr, ExprImpl};
 
 // Sums up every element in the expression into a scalar.
 pub struct Sum {
@@ -11,10 +10,6 @@ pub struct Sum {
 }
 
 impl ExprImpl for Sum {
-    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
-        self.expr.gradient(v, fv).sum()
-    }
-
     fn eval(&self) -> ndarray::ArrayD<f32> {
         ndarray::arr0(self.expr.eval().sum()).into_dyn()
     }
@@ -37,10 +32,8 @@ impl ExprImpl for Sum {
         }
     }
 
-    fn freeze_variable(&self, name: &str) -> Expr {
-        Expr::new(Self{
-            expr: self.expr.freeze_variable(name),
-        })
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+        self.expr.accumulate_gradients(output * super::expr(ndarray::Array::ones(self.expr.shape())), gradients)
     }
 }
 
@@ -54,11 +47,12 @@ impl fmt::Display for Sum {
 mod tests {
     use super::super::*;
 
-    use ndarray::Dimension;
-
     #[test]
     fn test() {
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
-        assert_eq!(x.sum().gradient_by_scalar(&x, &ndarray::Ix2(1, 0).into_dyn()).eval(), ndarray::arr0(1.0).into_dyn());
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
+        assert_eq!(x.sum().gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn());
+
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 0.0, 0.0]))));
+        assert_eq!(x.exp().sum().gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn());
     }
 }

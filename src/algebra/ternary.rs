@@ -1,9 +1,8 @@
 use std::fmt;
-use std::rc::Rc;
 
 use ndarray::Dimension;
 
-use super::{Expr, ExprImpl, VariableValue};
+use super::{Expr, ExprImpl};
 
 // Outputs one of two values based on a condition (1 or 0). If the true and false expressions are
 // not the same shape, one must be a scalar. If the condition is not a scalar and the true and
@@ -24,14 +23,6 @@ fn expand(a: ndarray::ArrayD<f32>, shape: ndarray::IxDyn) -> ndarray::ArrayD<f32
 }
 
 impl ExprImpl for Ternary {
-    fn gradient(&self, v: &str, fv: &Rc<VariableValue>) -> Expr {
-        Expr::new(Ternary{
-            condition: self.condition.clone(),
-            true_expr: self.true_expr.gradient(v, fv),
-            false_expr: self.false_expr.gradient(v, fv),
-        })
-    }
-
     fn eval(&self) -> ndarray::ArrayD<f32> {
         let condition = self.condition.eval();
         if condition.ndim() == 0 {
@@ -90,12 +81,17 @@ impl ExprImpl for Ternary {
         }
     }
 
-    fn freeze_variable(&self, name: &str) -> Expr {
-        Expr::new(Self{
-            condition: self.condition.freeze_variable(name),
-            true_expr: self.true_expr.freeze_variable(name),
-            false_expr: self.false_expr.freeze_variable(name),
-        })
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+        self.true_expr.accumulate_gradients(Expr::new(Ternary{
+            condition: self.condition.clone(),
+            true_expr: output.clone(),
+            false_expr: super::expr(0.0),
+        }), gradients);
+        self.false_expr.accumulate_gradients(Expr::new(Ternary{
+            condition: self.condition.clone(),
+            true_expr: super::expr(0.0),
+            false_expr: output,
+        }), gradients);
     }
 }
 

@@ -1,6 +1,9 @@
 use std::error::Error;
 use std::rc::Rc;
 
+use rand::SeedableRng;
+use rand::seq::SliceRandom;
+
 use super::{algebra, Dataset, Layer};
 
 pub struct Sequential {
@@ -49,8 +52,7 @@ impl Sequential {
                 trainable_variables.push(TrainableVariable{
                     name: v.name.clone(),
                     value: v.value.clone(),
-                    gradient: algebra::expr(0.0), // updated below
-                    gradient_fv: Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(v.value.shape()))),
+                    gradient: algebra::expr(0.0),
                 });
             }
             output = instance.expression(output);
@@ -58,16 +60,16 @@ impl Sequential {
         let target_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(target_shape)));
         let target = algebra::v("t", target_value.clone());
         variable_names.push("t".to_string());
-        let loss = loss_function(output, target);
+        let loss = loss_function(output.clone(), target);
         for tv in trainable_variables.iter_mut() {
-            tv.gradient = loss.gradient(tv.name.as_str(), &tv.gradient_fv);
+            tv.gradient = loss.gradient(tv.name.as_str());
         }
         CompiledSequential{
             input: input_value,
-            target: target_value,
             loss: loss,
+            output: output,
+            target: target_value,
             trainable_variables: trainable_variables,
-            variable_names: variable_names,
         }
     }
 }
@@ -76,45 +78,65 @@ struct TrainableVariable {
     name: String,
     value: Rc<algebra::VariableValue>,
     gradient: algebra::Expr,
-    gradient_fv: Rc<algebra::VariableValue>,
 }
 
 pub struct CompiledSequential {
     input: Rc<algebra::VariableValue>,
-    target: Rc<algebra::VariableValue>,
     loss: algebra::Expr,
+    output: algebra::Expr,
+    target: Rc<algebra::VariableValue>,
     trainable_variables: Vec<TrainableVariable>,
-    variable_names: Vec<String>,
+}
+
+fn max_index<S, D>(a: ndarray::ArrayBase<S, D>) -> usize
+    where S: ndarray::Data<Elem=f32>,
+          D: ndarray::Dimension,
+{
+    let mut selection = 0;
+    let mut selection_score = 0.0;
+    for (i, &v) in a.into_dimensionality::<ndarray::Ix1>().unwrap().indexed_iter() {
+        if v > selection_score {
+            selection = i;
+            selection_score = v;
+        }
+    }
+    selection
 }
 
 impl CompiledSequential {
     pub fn fit<D: Dataset>(&mut self, dataset: &mut D, learning_rate: f32, epochs: usize) -> Result<(), Box<Error>> {
-        for i in 0..epochs {
-            info!("epoch {}", i);
-            // TODO: shuffle
-            for j in 0..dataset.len() {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(0);
+        for epoch in 0..epochs {
+            let mut samples: Vec<usize> = (0..dataset.len()).collect();
+            samples.shuffle(&mut rng);
+            let mut step = 0;
+            for j in samples {
                 (*self.input).set(dataset.input(j)?);
                 (*self.target).set(dataset.target(j)?);
-                let mut gradients = Vec::new();
+                let mut gradients = self.loss.gradients();
                 for tv in self.trainable_variables.iter() {
-                    let mut gradient = tv.gradient.clone();
-                    for name in self.variable_names.iter() {
-                        gradient = gradient.freeze_variable(name.as_str());
-                    }
-                    gradient = gradient.simplified();
-                    gradients.push(ndarray::Array::from_shape_fn((*tv.value).shape(), |i| {
-                        (*tv.gradient_fv).mutate(|a| a[&i] = 1.0);
-                        let g = gradient.eval();
-                        (*tv.gradient_fv).mutate(|a| a[&i] = 0.0);
-                        *g.first().unwrap()
-                    }));
+                    println!("{}\n", gradients.get(&tv.name).unwrap());
+                    tv.value.set(tv.value.get() - gradients.remove(&tv.name).unwrap().eval() * learning_rate);
                 }
-                for (i, tv) in self.trainable_variables.iter_mut().enumerate() {
-                    tv.value.set(tv.value.get() - &gradients[i] * learning_rate);
+                if step % 1000 == 0 {
+                    info!("approx training set accuracy after epoch {}, step {}: {}", epoch, step, self.eval_accuracy(dataset)?);
                 }
-                info!("loss for step {}: {}", j, self.loss.eval());
+                step += 1
             }
         }
         Ok(())
+    }
+
+    fn eval_accuracy<D: Dataset>(&self, dataset: &mut D) -> Result<f32, Box<Error>> {
+        let mut samples: Vec<usize> = (0..dataset.len()).collect();
+        samples.shuffle(&mut rand::thread_rng());
+        let mut correct = 0;
+        for &j in samples.iter().take(std::cmp::max(samples.len(), 500)) {
+            (*self.input).set(dataset.input(j)?);
+            if max_index(self.output.eval()) == max_index(dataset.target(j)?) {
+                correct += 1
+            }
+        }
+        Ok(correct as f32 / dataset.len() as f32)
     }
 }
