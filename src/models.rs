@@ -66,7 +66,6 @@ impl Sequential {
         }
         CompiledSequential{
             input: input_value,
-            loss: loss,
             output: output,
             target: target_value,
             trainable_variables: trainable_variables,
@@ -82,7 +81,6 @@ struct TrainableVariable {
 
 pub struct CompiledSequential {
     input: Rc<algebra::VariableValue>,
-    loss: algebra::Expr,
     output: algebra::Expr,
     target: Rc<algebra::VariableValue>,
     trainable_variables: Vec<TrainableVariable>,
@@ -113,10 +111,8 @@ impl CompiledSequential {
             for j in samples {
                 (*self.input).set(dataset.input(j)?);
                 (*self.target).set(dataset.target(j)?);
-                let mut gradients = self.loss.gradients();
                 for tv in self.trainable_variables.iter() {
-                    println!("{}\n", gradients.get(&tv.name).unwrap());
-                    tv.value.set(tv.value.get() - gradients.remove(&tv.name).unwrap().eval() * learning_rate);
+                    tv.value.set(tv.value.get() - tv.gradient.eval() * learning_rate);
                 }
                 if step % 1000 == 0 {
                     info!("approx training set accuracy after epoch {}, step {}: {}", epoch, step, self.eval_accuracy(dataset)?);
