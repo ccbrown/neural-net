@@ -24,9 +24,7 @@ impl ExprImpl for Square {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            return Expr::new(Self{
-                expr: self.expr.propagate_constants(),
-            });
+            self.expr.propagate_constants().square()
         }
     }
 

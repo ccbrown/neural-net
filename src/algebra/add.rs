@@ -50,10 +50,7 @@ impl ExprImpl for Add {
                     return self.left.propagate_constants();
                 }
             }
-            return Expr::new(Self{
-                left: self.left.propagate_constants(),
-                right: self.right.propagate_constants(),
-            });
+            return self.left.propagate_constants() + self.right.propagate_constants();
         }
     }
 

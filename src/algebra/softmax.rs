@@ -25,9 +25,7 @@ impl ExprImpl for Softmax {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            return Expr::new(Self{
-                expr: self.expr.propagate_constants(),
-            });
+            self.expr.propagate_constants().softmax()
         }
     }
 

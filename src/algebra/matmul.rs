@@ -45,10 +45,7 @@ impl ExprImpl for MatMul {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            Expr::new(Self{
-                a: self.a.propagate_constants(),
-                b: self.b.propagate_constants(),
-            })
+            matmul(self.a.propagate_constants(), self.b.propagate_constants())
         }
     }
 

@@ -24,9 +24,7 @@ impl ExprImpl for Exp {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            Expr::new(Self{
-                power: self.power.propagate_constants(),
-            })
+            self.power.propagate_constants().exp()
         }
     }
 

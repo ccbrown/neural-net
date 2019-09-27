@@ -24,10 +24,7 @@ impl ExprImpl for Reshape {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            Expr::new(Self{
-                expr: self.expr.propagate_constants(),
-                shape: self.shape.clone(),
-            })
+            self.expr.propagate_constants().reshape(self.shape.clone())
         }
     }
 

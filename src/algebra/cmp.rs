@@ -81,11 +81,7 @@ impl ExprImpl for Cmp {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            Expr::new(Self{
-                left: self.left.propagate_constants(),
-                right: self.right.propagate_constants(),
-                op: self.op.clone(),
-            })
+            cmp(self.left.propagate_constants(), self.op.clone(), self.right.propagate_constants())
         }
     }
 

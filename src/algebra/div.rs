@@ -47,10 +47,7 @@ impl ExprImpl for Div {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            Expr::new(Self{
-                num: self.num.propagate_constants(),
-                den: self.den.propagate_constants(),
-            })
+            self.num.propagate_constants() / self.den.propagate_constants()
         }
     }
 

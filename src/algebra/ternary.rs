@@ -82,16 +82,8 @@ impl ExprImpl for Ternary {
     }
 
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.true_expr.accumulate_gradients(Expr::new(Ternary{
-            condition: self.condition.clone(),
-            true_expr: output.clone(),
-            false_expr: super::expr(0.0),
-        }), gradients);
-        self.false_expr.accumulate_gradients(Expr::new(Ternary{
-            condition: self.condition.clone(),
-            true_expr: super::expr(0.0),
-            false_expr: output,
-        }), gradients);
+        self.true_expr.accumulate_gradients(ternary(self.condition.clone(), output.clone(), super::expr(0.0)), gradients);
+        self.false_expr.accumulate_gradients(ternary(self.condition.clone(), super::expr(0.0), output), gradients);
     }
 }
 

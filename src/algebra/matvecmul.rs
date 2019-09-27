@@ -44,10 +44,7 @@ impl ExprImpl for MatVecMul {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            Expr::new(Self{
-                a: self.a.propagate_constants(),
-                b: self.b.propagate_constants(),
-            })
+            matvecmul(self.a.propagate_constants(), self.b.propagate_constants())
         }
     }
 

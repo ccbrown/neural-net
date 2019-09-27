@@ -26,9 +26,7 @@ impl ExprImpl for Sum {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            Expr::new(Self{
-                expr: self.expr.propagate_constants(),
-            })
+            self.expr.propagate_constants().sum()
         }
     }
 

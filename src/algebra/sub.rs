@@ -42,10 +42,7 @@ impl ExprImpl for Sub {
                     return self.left.propagate_constants();
                 }
             }
-            return Expr::new(Self{
-                left: self.left.propagate_constants(),
-                right: self.right.propagate_constants(),
-            });
+            self.left.propagate_constants() - self.right.propagate_constants()
         }
     }
 
