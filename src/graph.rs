@@ -4,9 +4,16 @@ use super::algebra::Expr;
 
 // Combines one or more algebraic expressions into a graph for efficient evaluation. Each graph
 // node corresponds to one expression or sub-expression. The graph offers two important performance
-// benefits: 1. Each node in the graph owns memory for its inputs and output. This minimizes
-// allocations during evaluation. 2. The graph ensures that each sub-expression is evaluated
-// exactly once, even when used by multiple top level expressions.
+// benefits:
+//
+//   1. Each node in the graph owns memory for its inputs and output. This minimizes allocations
+//      during evaluation.
+//
+//   2. The graph ensures that each sub-expression is evaluated exactly once, even when used by
+//      multiple top level expressions. Note that this only eliminates redundant work for
+//      expressions with the same id. This works well for gradients returned by Expr::gradients,
+//      but a more robust implementation would combine work for all equivalent expressions such as
+//      "a+b" and "b+a".
 pub struct Graph {
     nodes: Vec<Node>,
     expr_to_node_ids: HashMap<usize, usize>,
