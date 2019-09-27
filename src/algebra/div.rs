@@ -12,9 +12,8 @@ pub struct Div {
 }
 
 impl ExprImpl for Div {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        let num = self.num.eval();
-        let den = self.den.eval();
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        let (num, den) = (&inputs[0], &inputs[1]);
         if num.ndim() == den.ndim() {
             num / den
         } else if num.ndim() == 0 {
@@ -22,7 +21,7 @@ impl ExprImpl for Div {
             num.broadcast(shape).unwrap().into_owned() / den
         } else {
             let shape = num.dim();
-            num / den.broadcast(shape).unwrap()
+            num.clone() / den.broadcast(shape).unwrap()
         }
     }
 
@@ -54,6 +53,10 @@ impl ExprImpl for Div {
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
         self.num.accumulate_gradients(output.clone() / self.den.clone(), gradients);
         self.den.accumulate_gradients(output.clone() * (-1.0 * self.num.clone() / self.den.square()), gradients);
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.num, &self.den]
     }
 }
 

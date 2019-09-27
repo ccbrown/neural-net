@@ -11,9 +11,10 @@ pub struct MatVecMul {
 }
 
 impl ExprImpl for MatVecMul {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        let a = self.a.eval().into_dimensionality::<ndarray::Ix2>().unwrap();
-        let b = self.b.eval().into_dimensionality::<ndarray::Ix1>().unwrap();
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        let (a, b) = (&inputs[0], &inputs[1]);
+        let a = a.clone().into_dimensionality::<ndarray::Ix2>().unwrap();
+        let b = b.clone().into_dimensionality::<ndarray::Ix1>().unwrap();
         let mut result = ndarray::Array::zeros(a.rows());
         ndarray::linalg::general_mat_vec_mul(1.0, &a, &b, 0.0, &mut result);
         result.into_dyn()
@@ -53,6 +54,10 @@ impl ExprImpl for MatVecMul {
         let b2 = self.b.reshape(ndarray::Ix2(1, self.b.shape().size()));
         self.a.accumulate_gradients(super::matmul(output2, b2), gradients);
         self.b.accumulate_gradients(matvecmul(self.a.transpose(), output.clone()), gradients);
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.a, &self.b]
     }
 }
 

@@ -49,9 +49,8 @@ pub struct Cmp {
 }
 
 impl ExprImpl for Cmp {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        let mut left = self.left.eval();
-        let right = self.right.eval();
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        let (left, right) = (&inputs[0], &inputs[1]);
         if left.ndim() == 0 {
             let left = *left.first().unwrap();
             right.mapv(|v| if self.op.cmp(left, v) { 1.0 } else { 0.0 })
@@ -59,8 +58,10 @@ impl ExprImpl for Cmp {
             let right = *right.first().unwrap();
             left.mapv(|v| if self.op.cmp(v, right) { 1.0 } else { 0.0 })
         } else {
-            left.zip_mut_with(&right, |l, &r| *l = if self.op.cmp(*l, r) { 1.0 } else { 0.0 });
-            left
+            let mut result = unsafe { ndarray::Array::uninitialized(self.shape()) };
+            ndarray::Zip::from(&mut result).and(left).and(right)
+                .apply(|o, &l, &r| *o = if self.op.cmp(l, r) { 1.0 } else { 0.0 });
+            result
         }
     }
 
@@ -87,6 +88,10 @@ impl ExprImpl for Cmp {
 
     fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) {
         panic!("gradients are not supported for comparisons")
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.left, &self.right]
     }
 }
 

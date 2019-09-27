@@ -10,8 +10,8 @@ pub struct Sum {
 }
 
 impl ExprImpl for Sum {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        ndarray::arr0(self.expr.eval().sum()).into_dyn()
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        ndarray::arr0(inputs[0].sum()).into_dyn()
     }
 
     fn shape(&self) -> ndarray::IxDyn {
@@ -32,6 +32,10 @@ impl ExprImpl for Sum {
 
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
         self.expr.accumulate_gradients(output * super::expr(ndarray::Array::ones(self.expr.shape())), gradients)
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.expr]
     }
 }
 

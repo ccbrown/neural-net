@@ -7,8 +7,8 @@ pub struct Softmax {
 }
 
 impl ExprImpl for Softmax {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        let v = self.expr.exp().eval();
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        let v = inputs[0].mapv(|v| v.exp());
         let sum = v.sum();
         v / sum
     }
@@ -32,6 +32,10 @@ impl ExprImpl for Softmax {
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
         let softmax = softmax(self.expr.clone());
         self.expr.accumulate_gradients((output.clone() - (output.clone() * softmax.clone()).sum()) * softmax, gradients);
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.expr]
     }
 }
 

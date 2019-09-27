@@ -8,8 +8,8 @@ pub struct Reshape {
 }
 
 impl ExprImpl for Reshape {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        self.expr.eval().into_shape(self.shape.clone()).unwrap()
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        inputs[0].clone().into_shape(self.shape.clone()).unwrap()
     }
 
     fn shape(&self) -> ndarray::IxDyn {
@@ -30,6 +30,10 @@ impl ExprImpl for Reshape {
 
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
         self.expr.accumulate_gradients(output.reshape(self.expr.shape()), gradients);
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.expr]
     }
 }
 

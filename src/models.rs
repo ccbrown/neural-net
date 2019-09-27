@@ -4,7 +4,7 @@ use std::rc::Rc;
 use rand::SeedableRng;
 use rand::seq::SliceRandom;
 
-use super::{algebra, Dataset, Layer};
+use super::{algebra, Dataset, graph, Layer};
 
 pub struct Sequential {
     input_shape: ndarray::IxDyn,
@@ -52,7 +52,7 @@ impl Sequential {
                 trainable_variables.push(TrainableVariable{
                     name: v.name.clone(),
                     value: v.value.clone(),
-                    gradient: algebra::expr(0.0),
+                    gradient_node_id: 0,
                 });
             }
             output = instance.expression(output);
@@ -61,14 +61,18 @@ impl Sequential {
         let target = algebra::v("t", target_value.clone());
         variable_names.push("t".to_string());
         let loss = loss_function(output.clone(), target);
+        let mut graph = graph::Graph::new();
+        let gradients = loss.gradients();
         for tv in trainable_variables.iter_mut() {
-            tv.gradient = loss.gradient(tv.name.as_str());
+            tv.gradient_node_id = graph.add(gradients.get(&tv.name).unwrap().clone());
         }
+        let output_node_id = graph.add(output);
         CompiledSequential{
             input: input_value,
-            output: output,
             target: target_value,
             trainable_variables: trainable_variables,
+            graph: graph,
+            output_node_id: output_node_id,
         }
     }
 }
@@ -76,23 +80,24 @@ impl Sequential {
 struct TrainableVariable {
     name: String,
     value: Rc<algebra::VariableValue>,
-    gradient: algebra::Expr,
+    gradient_node_id: usize,
 }
 
 pub struct CompiledSequential {
     input: Rc<algebra::VariableValue>,
-    output: algebra::Expr,
     target: Rc<algebra::VariableValue>,
     trainable_variables: Vec<TrainableVariable>,
+    graph: graph::Graph,
+    output_node_id: usize,
 }
 
-fn max_index<S, D>(a: ndarray::ArrayBase<S, D>) -> usize
+fn max_index<S, D>(a: &ndarray::ArrayBase<S, D>) -> usize
     where S: ndarray::Data<Elem=f32>,
           D: ndarray::Dimension,
 {
     let mut selection = 0;
     let mut selection_score = 0.0;
-    for (i, &v) in a.into_dimensionality::<ndarray::Ix1>().unwrap().indexed_iter() {
+    for (i, &v) in a.view().into_dimensionality::<ndarray::Ix1>().unwrap().indexed_iter() {
         if v > selection_score {
             selection = i;
             selection_score = v;
@@ -104,6 +109,7 @@ fn max_index<S, D>(a: ndarray::ArrayBase<S, D>) -> usize
 impl CompiledSequential {
     pub fn fit<D: Dataset>(&mut self, dataset: &mut D, learning_rate: f32, epochs: usize) -> Result<(), Box<Error>> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
+        let gradient_node_ids: Vec<_> = self.trainable_variables.iter().map(|v| v.gradient_node_id).collect();
         for epoch in 0..epochs {
             let mut samples: Vec<usize> = (0..dataset.len()).collect();
             samples.shuffle(&mut rng);
@@ -111,11 +117,12 @@ impl CompiledSequential {
             for j in samples {
                 (*self.input).set(dataset.input(j)?);
                 (*self.target).set(dataset.target(j)?);
+                self.graph.eval_nodes(gradient_node_ids.clone());
                 for tv in self.trainable_variables.iter() {
-                    tv.value.set(tv.value.get() - tv.gradient.eval() * learning_rate);
+                    tv.value.set(tv.value.get() - self.graph.node_output(tv.gradient_node_id) * learning_rate);
                 }
-                if step % 1000 == 0 {
-                    info!("approx training set accuracy after epoch {}, step {}: {}", epoch, step, self.eval_accuracy(dataset)?);
+                if step % 10000 == 0 {
+                    info!("epoch {}, step {}; accuracy: {}", epoch, step, self.eval_accuracy(dataset)?);
                 }
                 step += 1
             }
@@ -123,13 +130,21 @@ impl CompiledSequential {
         Ok(())
     }
 
-    fn eval_accuracy<D: Dataset>(&self, dataset: &mut D) -> Result<f32, Box<Error>> {
+    pub fn predict<S, D>(&mut self, input: ndarray::ArrayBase<S, D>) -> &ndarray::ArrayD<f32> 
+        where S: ndarray::Data<Elem=f32>,
+              D: ndarray::Dimension,
+    {
+        (*self.input).set(input);
+        self.graph.eval_nodes(vec![self.output_node_id]);
+        self.graph.node_output(self.output_node_id)
+    }
+
+    fn eval_accuracy<D: Dataset>(&mut self, dataset: &mut D) -> Result<f32, Box<Error>> {
         let mut samples: Vec<usize> = (0..dataset.len()).collect();
         samples.shuffle(&mut rand::thread_rng());
         let mut correct = 0;
         for &j in samples.iter().take(std::cmp::max(samples.len(), 500)) {
-            (*self.input).set(dataset.input(j)?);
-            if max_index(self.output.eval()) == max_index(dataset.target(j)?) {
+            if max_index(self.predict(dataset.input(j)?)) == max_index(&dataset.target(j)?) {
                 correct += 1
             }
         }

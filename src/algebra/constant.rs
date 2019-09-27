@@ -7,7 +7,7 @@ pub struct Constant {
 }
 
 impl ExprImpl for Constant {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
+    fn eval_inputs(&self, _inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
         self.value.clone()
     }
 
@@ -25,6 +25,10 @@ impl ExprImpl for Constant {
 
     fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) {
         // do nothing
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![]
     }
 }
 

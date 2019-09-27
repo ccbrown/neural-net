@@ -9,8 +9,8 @@ pub struct Transpose {
 }
 
 impl ExprImpl for Transpose {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        self.expr.eval().t().into_owned()
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        inputs[0].t().into_owned()
     }
 
     fn shape(&self) -> ndarray::IxDyn {
@@ -33,6 +33,10 @@ impl ExprImpl for Transpose {
 
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
         self.expr.accumulate_gradients(output.transpose(), gradients);
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.expr]
     }
 }
 

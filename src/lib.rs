@@ -46,6 +46,7 @@ pub mod algebra;
 pub mod activations;
 pub mod datasets;
 pub mod initializers;
+pub mod graph;
 pub mod layers;
 pub mod losses;
 pub mod models;

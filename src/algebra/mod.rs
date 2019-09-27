@@ -1,6 +1,7 @@
 use std::fmt;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ndarray::Dimension;
 
@@ -27,23 +28,41 @@ pub struct Gradients {
 }
 
 pub trait ExprImpl: fmt::Display {
-    fn eval(&self) -> ndarray::ArrayD<f32>;
+    fn eval_inputs(&self, _inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32>;
     fn shape(&self) -> ndarray::IxDyn;
     fn is_constant(&self) -> bool;
     fn propagate_constants(&self) -> Expr;
     fn accumulate_gradients(&self, output: Expr, gradients: &mut Gradients);
+    fn inputs(&self) -> Vec<&Expr>;
+
+    fn eval(&self) -> ndarray::ArrayD<f32> {
+        let mut inputs = Vec::new();
+        for input in self.inputs() {
+            inputs.push(input.eval());
+        }
+        self.eval_inputs(&inputs)
+    }
 }
 
 #[derive(Clone)]
 pub struct Expr {
     expr: Rc<ExprImpl>,
+    id: usize,
 }
+
+static GLOBAL_EXPR_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 impl Expr {
     pub fn new<T: ExprImpl + 'static>(expr: T) -> Expr {
         Expr{
             expr: Rc::new(expr),
+            id: GLOBAL_EXPR_COUNT.fetch_add(1, Ordering::SeqCst),
         }
+    }
+
+    // Returns a process-wide unique identifier for this expression and its clones.
+    pub fn id(&self) -> usize {
+        self.id
     }
 
     pub fn gradients(&self) -> HashMap<String, Expr> {
@@ -116,8 +135,8 @@ impl Expr {
 }
 
 impl ExprImpl for Expr {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        let result = self.expr.eval();
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        let result = self.expr.eval_inputs(inputs);
         if result.dim() != self.shape() {
             panic!("incorrect result shape for eval. got {:?}, expected {:?}", result.shape(), self.shape());
         }
@@ -149,6 +168,10 @@ impl ExprImpl for Expr {
             panic!("incorrect output shape for accumulate_gradients. got {:?}, expected {:?}", output.shape(), self.shape());
         }
         self.expr.accumulate_gradients(output, gradients)
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        self.expr.inputs()
     }
 }
 

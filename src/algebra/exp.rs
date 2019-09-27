@@ -8,8 +8,8 @@ pub struct Exp {
 }
 
 impl ExprImpl for Exp {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        self.power.eval().mapv(|v| v.exp())
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        inputs[0].mapv(|v| v.exp())
     }
 
     fn shape(&self) -> ndarray::IxDyn {
@@ -30,6 +30,10 @@ impl ExprImpl for Exp {
 
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
         self.power.accumulate_gradients(output.clone() * Expr::new(self.clone()), gradients);
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.power]
     }
 }
 

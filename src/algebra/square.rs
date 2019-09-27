@@ -7,9 +7,8 @@ pub struct Square {
 }
 
 impl ExprImpl for Square {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        let v = self.expr.eval();
-        &v * &v
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        &inputs[0] * &inputs[0]
     }
 
     fn shape(&self) -> ndarray::IxDyn {
@@ -30,6 +29,10 @@ impl ExprImpl for Square {
 
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
         self.expr.accumulate_gradients(output.clone() * 2.0 * self.expr.clone(), gradients);
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.expr]
     }
 }
 

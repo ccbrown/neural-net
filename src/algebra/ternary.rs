@@ -14,26 +14,26 @@ pub struct Ternary {
     pub false_expr: Expr,
 }
 
-fn expand(a: ndarray::ArrayD<f32>, shape: ndarray::IxDyn) -> ndarray::ArrayD<f32> {
+fn expand(a: &ndarray::ArrayD<f32>, shape: ndarray::IxDyn) -> ndarray::ArrayD<f32> {
     if a.ndim() < shape.ndim() {
         ndarray::Array::from_elem(shape, *a.first().unwrap())
     } else {
-        a
+        a.clone()
     }
 }
 
 impl ExprImpl for Ternary {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
-        let condition = self.condition.eval();
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        let (condition, true_expr, false_expr) = (&inputs[0], &inputs[1], &inputs[2]);
         if condition.ndim() == 0 {
             if *condition.first().unwrap() == 0.0 {
-                expand(self.false_expr.eval(), self.true_expr.shape())
+                expand(false_expr, self.true_expr.shape())
             } else {
-                expand(self.true_expr.eval(), self.false_expr.shape())
+                expand(true_expr, self.false_expr.shape())
             }
         } else {
-            let false_condition = 1.0 - &condition;
-            condition * self.true_expr.eval() + false_condition * self.false_expr.eval()
+            let false_condition = 1.0 - condition;
+            condition * true_expr + false_condition * false_expr
         }
     }
 
@@ -84,6 +84,10 @@ impl ExprImpl for Ternary {
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
         self.true_expr.accumulate_gradients(ternary(self.condition.clone(), output.clone(), super::expr(0.0)), gradients);
         self.false_expr.accumulate_gradients(ternary(self.condition.clone(), super::expr(0.0), output), gradients);
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.condition, &self.true_expr, &self.false_expr]
     }
 }
 

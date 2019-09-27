@@ -12,12 +12,13 @@ pub struct Add {
 }
 
 impl ExprImpl for Add {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
+    fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
+        let (left, right) = (&inputs[0], &inputs[1]);
         // ndarray will broadcast a scalar into the larger operand, but only if it's on the right
-        if self.left.shape().ndim() == 0 {
-            self.right.eval() + self.left.eval()
+        if left.ndim() == 0 {
+            right + left
         } else {
-            self.left.eval() + self.right.eval()
+            left + right
         }
     }
 
@@ -57,6 +58,10 @@ impl ExprImpl for Add {
     fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
         self.left.accumulate_gradients(output.clone(), gradients);
         self.right.accumulate_gradients(output.clone(), gradients);
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![&self.left, &self.right]
     }
 }
 

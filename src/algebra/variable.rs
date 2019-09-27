@@ -45,7 +45,7 @@ pub struct Variable {
 }
 
 impl ExprImpl for Variable {
-    fn eval(&self) -> ndarray::ArrayD<f32> {
+    fn eval_inputs(&self, _inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
         (*self.value).get()
     }
 
@@ -66,6 +66,10 @@ impl ExprImpl for Variable {
             Some(grad) => grad.clone() + output,
             None => output,
         });
+    }
+
+    fn inputs(&self) -> Vec<&Expr> {
+        vec![]
     }
 }
 
