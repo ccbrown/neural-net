@@ -1,5 +1,7 @@
 use std::error::Error;
 
+// This just downloads a file to the given destination if it doesn't already exist. There's nothing
+// really to see here.
 pub fn download(url: &str, destination: &str) -> Result<(), Box<Error>> {
     let path = std::path::Path::new(destination);
     if path.exists() {

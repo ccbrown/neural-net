@@ -2,19 +2,24 @@ use std::collections::HashMap;
 
 use super::algebra::Expr;
 
+// Combines one or more algebraic expressions into a graph for efficient evaluation. Each graph
+// node corresponds to one expression or sub-expression. The graph offers two important performance
+// benefits: 1. Each node in the graph owns memory for its inputs and output. This minimizes
+// allocations during evaluation. 2. The graph ensures that each sub-expression is evaluated
+// exactly once, even when used by multiple top level expressions.
+pub struct Graph {
+    nodes: Vec<Node>,
+    expr_to_node_ids: HashMap<usize, usize>,
+    generation: usize,
+    top_level_node_ids: Vec<usize>,
+}
+
 pub struct Node {
     expr: Expr,
     inputs: Vec<ndarray::ArrayD<f32>>,
     input_node_ids: Vec<usize>,
     output: ndarray::ArrayD<f32>,
     output_generation: usize,
-}
-
-pub struct Graph {
-    nodes: Vec<Node>,
-    expr_to_node_ids: HashMap<usize, usize>,
-    generation: usize,
-    top_level_node_ids: Vec<usize>,
 }
 
 impl Graph {

@@ -23,6 +23,14 @@ pub mod transpose; pub use transpose::*;
 pub mod variable; pub use variable::*;
 pub mod constant; pub use constant::*;
 
+// All math done by the neural net is defined via Expr. This allows the library to perform
+// automatic differentiation. This is the equivalent of a Tensor in Tensorflow.
+#[derive(Clone)]
+pub struct Expr {
+    expr: Rc<ExprImpl>,
+    id: usize,
+}
+
 pub struct Gradients {
     pub expressions: HashMap<String, Expr>,
 }
@@ -42,12 +50,6 @@ pub trait ExprImpl: fmt::Display {
         }
         self.eval_inputs(&inputs)
     }
-}
-
-#[derive(Clone)]
-pub struct Expr {
-    expr: Rc<ExprImpl>,
-    id: usize,
 }
 
 static GLOBAL_EXPR_COUNT: AtomicUsize = AtomicUsize::new(0);

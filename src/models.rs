@@ -6,6 +6,7 @@ use rand::seq::SliceRandom;
 
 use super::{algebra, Dataset, graph, Layer};
 
+// Sequential is used to build a neural network based on layers that are activated in sequence.
 pub struct Sequential {
     input_shape: ndarray::IxDyn,
     output_shape: ndarray::IxDyn,
@@ -35,6 +36,9 @@ impl Sequential {
         Ok(())
     }
 
+    // Once the model is final, it needs to be "compiled" before it can do anything. This just does
+    // a bit of math up front before returning the object that can be used for training or
+    // inference.
     pub fn compile<D, L>(self, target_shape: D, loss_function: L) -> CompiledSequential
         where D: ndarray::Dimension,
               L: Fn(algebra::Expr, algebra::Expr) -> algebra::Expr + 'static,
@@ -107,6 +111,7 @@ fn max_index<S, D>(a: &ndarray::ArrayBase<S, D>) -> usize
 }
 
 impl CompiledSequential {
+    // Trains the model using stochastic gradient descent.
     pub fn fit<D: Dataset>(&mut self, dataset: &mut D, learning_rate: f32, epochs: usize) -> Result<(), Box<Error>> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         let gradient_node_ids: Vec<_> = self.trainable_variables.iter().map(|v| v.gradient_node_id).collect();
