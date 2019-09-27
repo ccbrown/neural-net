@@ -18,7 +18,7 @@ model = keras.Sequential([
 ])
 ```
 
-The input is a 28x28 matrix that'll get flatted into a 784 element vector. The first dense network will consist of 128 neurons, each connected to every element in the input vector. The second dense layer will be the head of the network. It has outputs 10 elements, one for each class present in the dataset.
+The input is a 28x28 matrix that'll get flatted into a 784 element vector. The first dense network will consist of 128 neurons, each connected to every element in the input vector. The second dense layer will be the head of the network. It outputs 10 elements, one for each class present in the dataset.
 
 The math behind this is very simple. The flatten layer has no math at all. The dense layers each output `activation(weights * input + bias)`. The RELU activation function is just `max(0, input)`. It introduces non-linearity to the network, which is important for image recognition. The softmax function is just `exp(input)/sum(exp(input))`. It normalizes our outputs into a probability vector.
 
