@@ -25,6 +25,12 @@ pub mod constant; pub use constant::*;
 
 // All math done by the neural net is defined via Expr. This allows the library to perform
 // automatic differentiation. This is the equivalent of a Tensor in Tensorflow.
+//
+// Some implementations such as softmax and square exist primarily for introspection. For example,
+// if square didn't exist, we could just as easily write "x * x". However, `format!("{}",
+// x.square())` is dramatically easier to read than `format!("{}", x * x)` when x is a complex
+// expression. There are also potential performance benefits to having more specialized operations
+// implemented, but for now the difference is pretty negligible.
 #[derive(Clone)]
 pub struct Expr {
     expr: Rc<ExprImpl>,
