@@ -8,6 +8,14 @@ pub fn relu(input: algebra::Expr) -> algebra::Expr {
     input.max(algebra::expr(0.0))
 }
 
+pub fn leaky_relu(alpha: f32) -> impl Fn(algebra::Expr) -> algebra::Expr {
+    move |input| algebra::ternary(
+        algebra::cmp(input.clone(), algebra::cmp::Op::Less, algebra::expr(0.0)),
+        input.clone() * algebra::expr(alpha),
+        input,
+    )
+}
+
 pub fn softmax(input: algebra::Expr) -> algebra::Expr {
     input.softmax()
 }

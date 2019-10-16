@@ -15,7 +15,7 @@ pub struct LayerVariable {
 }
 
 pub trait Layer {
-    fn init(&self, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<LayerInstance>;
+    fn init(self: Box<Self>, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<dyn LayerInstance>;
 }
 
 pub trait LayerInstance {
@@ -37,9 +37,9 @@ pub trait LayerInstance {
 pub trait Dataset {
     fn len(&self) -> usize;
 
-    fn input(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<Error>>;
+    fn input(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<dyn Error>>;
 
-    fn target(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<Error>>;
+    fn target(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<dyn Error>>;
 }
 
 pub mod algebra;

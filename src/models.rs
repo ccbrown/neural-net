@@ -9,7 +9,7 @@ use super::{algebra, Dataset, graph, Layer};
 // Sequential is used to build a neural network based on layers that are activated in sequence.
 pub struct Sequential {
     input_shape: ndarray::IxDyn,
-    layers: Vec<Box<Layer>>,
+    layers: Vec<Box<dyn Layer>>,
 }
 
 impl Sequential {
@@ -20,7 +20,7 @@ impl Sequential {
         }
     }
 
-    pub fn add_layer<L: Layer + 'static>(&mut self, layer: L) -> Result<(), Box<Error>> {
+    pub fn add_layer<L: Layer + 'static>(&mut self, layer: L) -> Result<(), Box<dyn Error>> {
         self.layers.push(Box::new(layer));
         Ok(())
     }
@@ -28,7 +28,7 @@ impl Sequential {
     // Once the model is final, it needs to be "compiled" before it can do anything. This just does
     // a bit of math up front before returning the object that can be used for training or
     // inference.
-    pub fn compile<D, L>(self, target_shape: D, loss_function: L) -> CompiledSequential
+    pub fn compile<D, L>(mut self, target_shape: D, loss_function: L) -> CompiledSequential
         where D: ndarray::Dimension,
               L: Fn(algebra::Expr, algebra::Expr) -> algebra::Expr + 'static,
     {
@@ -38,7 +38,7 @@ impl Sequential {
         variable_names.push("i".to_string());
         let mut output = input.clone();
         let mut trainable_variables = Vec::new();
-        for (i, layer) in self.layers.iter().enumerate() {
+        for (i, layer) in self.layers.drain(..).enumerate() {
             let instance = layer.init(format!("l{}", i).as_str(), &output.shape());
             for v in instance.variables() {
                 variable_names.push(v.name.clone());
@@ -101,7 +101,7 @@ fn max_index<S, D>(a: &ndarray::ArrayBase<S, D>) -> usize
 
 impl CompiledSequential {
     // Trains the model using stochastic gradient descent.
-    pub fn fit<D: Dataset>(&mut self, dataset: &mut D, learning_rate: f32, epochs: usize) -> Result<(), Box<Error>> {
+    pub fn fit<D: Dataset>(&mut self, dataset: &mut D, learning_rate: f32, epochs: usize) -> Result<(), Box<dyn Error>> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         let gradient_node_ids: Vec<_> = self.trainable_variables.iter().map(|v| v.gradient_node_id).collect();
         for epoch in 0..epochs {
@@ -133,7 +133,7 @@ impl CompiledSequential {
         self.graph.node_output(self.output_node_id)
     }
 
-    fn eval_accuracy<D: Dataset>(&mut self, dataset: &mut D) -> Result<f32, Box<Error>> {
+    fn eval_accuracy<D: Dataset>(&mut self, dataset: &mut D) -> Result<f32, Box<dyn Error>> {
         let mut samples: Vec<usize> = (0..dataset.len()).collect();
         samples.shuffle(&mut rand::thread_rng());
         let mut correct = 0;

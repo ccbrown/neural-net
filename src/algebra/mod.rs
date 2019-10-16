@@ -36,7 +36,7 @@ pub mod constant; pub use constant::*;
 // implemented.
 #[derive(Clone)]
 pub struct Expr {
-    expr: Rc<ExprImpl>,
+    expr: Rc<dyn ExprImpl>,
     id: usize,
 }
 
@@ -187,7 +187,7 @@ impl ExprImpl for Expr {
 }
 
 impl std::ops::Deref for Expr {
-    type Target = Rc<ExprImpl>;
+    type Target = Rc<dyn ExprImpl>;
 
     fn deref(&self) -> &Self::Target {
         &self.expr

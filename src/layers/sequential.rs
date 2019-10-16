@@ -1,15 +1,15 @@
 use super::super::{Layer, LayerInstance};
 
 pub struct Sequential {
-    pub layers: Vec<Box<Layer>>,
+    pub layers: Vec<Box<dyn Layer>>,
 }
 
 impl Layer for Sequential {
-    fn init(&self, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<LayerInstance> {
+    fn init(mut self: Box<Self>, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<dyn LayerInstance> {
         let mut input_shape = input_shape.clone();
         let mut layers = Vec::new();
         let mut variables = Vec::new();
-        for (i, layer) in self.layers.iter().enumerate() {
+        for (i, layer) in self.layers.drain(..).enumerate() {
             let instance = layer.init(format!("{}/{}", namespace, i).as_str(), &input_shape);
             input_shape = instance.output_shape(&input_shape);
             for v in instance.variables() {

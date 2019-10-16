@@ -5,7 +5,7 @@ pub struct Reshape {
 }
 
 impl Layer for Reshape {
-    fn init(&self, _namespace: &str, _input_shape: &ndarray::IxDyn) -> Box<LayerInstance> {
+    fn init(self: Box<Self>, _namespace: &str, _input_shape: &ndarray::IxDyn) -> Box<dyn LayerInstance> {
         let shape = self.shape.clone();
         Box::new(super::Instance{
             expression: move |input| input.reshape(shape.clone()),

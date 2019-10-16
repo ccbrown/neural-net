@@ -5,7 +5,7 @@ use ndarray::Dimension;
 pub struct Flatten {}
 
 impl Layer for Flatten {
-    fn init(&self, _namespace: &str, input_shape: &ndarray::IxDyn) -> Box<LayerInstance> {
+    fn init(self: Box<Self>, _namespace: &str, input_shape: &ndarray::IxDyn) -> Box<dyn LayerInstance> {
         let output_size = input_shape.size();
         Box::new(super::Instance{
             expression: move |input| input.reshape(ndarray::Ix1(output_size)),

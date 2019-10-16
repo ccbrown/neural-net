@@ -12,7 +12,7 @@ static CLASS_NAMES: [&str; 10] = [
     "Ankle boot"
 ];
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_IMAGES_GZ_URL, TRAINING_IMAGES_GZ)?;

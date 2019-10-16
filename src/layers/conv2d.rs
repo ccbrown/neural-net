@@ -20,10 +20,10 @@ pub struct Conv2D<Activation, KernelInitializer>
 }
 
 impl<Activation, KernelInitializer> Layer for Conv2D<Activation, KernelInitializer>
-    where Activation: Fn(algebra::Expr) -> algebra::Expr + Clone + 'static,
+    where Activation: Fn(algebra::Expr) -> algebra::Expr + 'static,
           KernelInitializer: Fn(&ndarray::IxDyn) -> ndarray::ArrayD<f32>
 {
-    fn init(&self, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<LayerInstance> {
+    fn init(self: Box<Self>, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<dyn LayerInstance> {
         let mut lv_builder = LayerVariablesBuilder::new(namespace);
         let in_channels = input_shape.as_array_view()[2];
         let biases = match self.use_bias {
@@ -31,7 +31,7 @@ impl<Activation, KernelInitializer> Layer for Conv2D<Activation, KernelInitializ
             false => None,
         };
         let kernel = lv_builder.append("w", (self.kernel_initializer)(&ndarray::IxDyn(&[self.kernel_size[0], self.kernel_size[1], in_channels, self.filters])));
-        let activation = self.activation.clone();
+        let activation = self.activation;
         let stride = self.stride;
         let padding = self.padding;
         Box::new(super::Instance{

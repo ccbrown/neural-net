@@ -14,12 +14,12 @@ pub struct Dense<Activation, KernelInitializer>
 }
 
 impl<Activation, KernelInitializer> Layer for Dense<Activation, KernelInitializer>
-    where Activation: Fn(algebra::Expr) -> algebra::Expr + Clone + 'static,
+    where Activation: Fn(algebra::Expr) -> algebra::Expr + 'static,
           KernelInitializer: Fn(&ndarray::IxDyn) -> ndarray::ArrayD<f32>
 {
-    fn init(&self, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<LayerInstance> {
+    fn init(self: Box<Self>, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<dyn LayerInstance> {
         let mut lv_builder = LayerVariablesBuilder::new(namespace);
-        let activation = self.activation.clone();
+        let activation = self.activation;
         let biases = lv_builder.append("b", ndarray::Array::zeros(self.output_size));
         let weights = lv_builder.append("w", (self.kernel_initializer)(&ndarray::Ix2(self.output_size, input_shape.size()).into_dyn()));
         Box::new(super::Instance{
