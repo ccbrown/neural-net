@@ -1,6 +1,6 @@
 extern crate byteorder;
 #[macro_use] extern crate log;
-extern crate ndarray;
+#[macro_use] extern crate ndarray;
 extern crate rand;
 extern crate reqwest;
 #[macro_use] extern crate simple_error;
@@ -15,11 +15,9 @@ pub struct LayerVariable {
 }
 
 pub trait Layer {
-    fn init(&self, namespace: &str) -> Box<LayerInstance>;
+    fn init(&self, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<LayerInstance>;
 
-    fn input_shape(&self) -> ndarray::IxDyn;
-
-    fn output_shape(&self) -> ndarray::IxDyn;
+    fn output_shape(&self, input_shape: &ndarray::IxDyn) -> ndarray::IxDyn;
 }
 
 pub trait LayerInstance {

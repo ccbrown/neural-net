@@ -27,11 +27,7 @@ impl Sequential {
     }
 
     pub fn add_layer<L: Layer + 'static>(&mut self, layer: L) -> Result<(), Box<Error>> {
-        if self.output_shape != layer.input_shape() {
-            bail!("invalid input shape for layer. got {:?}, expected {:?}", layer.input_shape(), self.output_shape)
-        }
-
-        self.output_shape = layer.output_shape();
+        self.output_shape = layer.output_shape(&self.output_shape);
         self.layers.push(Box::new(layer));
         Ok(())
     }
@@ -50,7 +46,7 @@ impl Sequential {
         let mut output = input.clone();
         let mut trainable_variables = Vec::new();
         for (i, layer) in self.layers.iter().enumerate() {
-            let instance = layer.init(format!("l{}", i).as_str());
+            let instance = layer.init(format!("l{}", i).as_str(), &output.shape());
             for v in instance.variables() {
                 variable_names.push(v.name.clone());
                 trainable_variables.push(TrainableVariable{

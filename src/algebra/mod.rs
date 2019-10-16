@@ -6,7 +6,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use ndarray::Dimension;
 
 pub mod add; pub use add::*;
+pub mod bias_add; pub use bias_add::*;
 pub mod cmp; pub use cmp::*;
+pub mod conv2d; pub use conv2d::*;
 pub mod div; pub use div::*;
 pub mod exp; pub use exp::*;
 pub mod ternary; pub use ternary::*;
@@ -20,6 +22,7 @@ pub mod sub; pub use sub::*;
 pub mod square; pub use square::*;
 pub mod sum; pub use sum::*;
 pub mod transpose; pub use transpose::*;
+pub mod unevaluable; pub use unevaluable::*;
 pub mod variable; pub use variable::*;
 pub mod constant; pub use constant::*;
 

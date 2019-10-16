@@ -4,8 +4,6 @@ extern crate flate2;
 extern crate ndarray;
 extern crate neural_net;
 
-use ndarray::Dimension;
-
 static TRAINING_IMAGES_GZ: &str = "dataset/training-images.gz";
 static TRAINING_LABELS_GZ: &str = "dataset/training-labels.gz";
 
@@ -21,17 +19,13 @@ fn main() -> Result<(), Box<std::error::Error>> {
     neural_net::util::download(neural_net::datasets::FASHION_MNIST_TRAINING_LABELS_GZ_URL, TRAINING_LABELS_GZ)?;
 
     let mut model = neural_net::models::Sequential::new(ndarray::Ix2(28, 28));
-    model.add_layer(neural_net::layers::Flatten{
-        input_shape: model.output_shape(),
-    })?;
+    model.add_layer(neural_net::layers::Flatten{})?;
     model.add_layer(neural_net::layers::Dense{
-        input_size: model.output_shape().size(),
         output_size: 128,
         activation: neural_net::activations::relu,
         kernel_initializer: neural_net::initializers::glorot_uniform,
     })?;
     model.add_layer(neural_net::layers::Dense{
-        input_size: model.output_shape().size(),
         output_size: 10,
         activation: neural_net::activations::softmax,
         kernel_initializer: neural_net::initializers::glorot_uniform,

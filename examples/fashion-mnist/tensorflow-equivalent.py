@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-import tensorflow as tf
-from tensorflow import keras
+try:
+    import keras
+except ImportError:
+    from tensorflow import keras
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -18,8 +20,8 @@ test_images = test_images / 255.0
 
 model = keras.Sequential([
     keras.layers.Flatten(input_shape=(28, 28)),
-    keras.layers.Dense(128, activation=tf.nn.relu),
-    keras.layers.Dense(10, activation=tf.nn.softmax)
+    keras.layers.Dense(128, activation='relu'),
+    keras.layers.Dense(10, activation='softmax')
 ])
 
 model.compile(optimizer='sgd', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
@@ -28,6 +30,7 @@ model.summary()
 model.fit(train_images, train_labels, epochs=5)
 
 test_loss, test_acc = model.evaluate(test_images, test_labels)
+print(test_loss, test_acc)
 
 predictions = model.predict(test_images)
 

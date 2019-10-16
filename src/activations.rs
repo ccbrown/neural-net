@@ -1,5 +1,9 @@
 use super::algebra;
 
+pub fn linear(input: algebra::Expr) -> algebra::Expr {
+    input
+}
+
 pub fn relu(input: algebra::Expr) -> algebra::Expr {
     input.max(algebra::expr(0.0))
 }
