@@ -9,7 +9,6 @@ use super::{algebra, Dataset, graph, Layer};
 // Sequential is used to build a neural network based on layers that are activated in sequence.
 pub struct Sequential {
     input_shape: ndarray::IxDyn,
-    output_shape: ndarray::IxDyn,
     layers: Vec<Box<Layer>>,
 }
 
@@ -17,17 +16,11 @@ impl Sequential {
     pub fn new<D: ndarray::Dimension>(input_shape: D) -> Sequential {
         Sequential{
             input_shape: input_shape.clone().into_dyn(),
-            output_shape: input_shape.clone().into_dyn(),
             layers: Vec::new(),
         }
     }
 
-    pub fn output_shape(&self) -> ndarray::IxDyn {
-        self.output_shape.clone()
-    }
-
     pub fn add_layer<L: Layer + 'static>(&mut self, layer: L) -> Result<(), Box<Error>> {
-        self.output_shape = layer.output_shape(&self.output_shape);
         self.layers.push(Box::new(layer));
         Ok(())
     }

@@ -16,8 +16,6 @@ pub struct LayerVariable {
 
 pub trait Layer {
     fn init(&self, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<LayerInstance>;
-
-    fn output_shape(&self, input_shape: &ndarray::IxDyn) -> ndarray::IxDyn;
 }
 
 pub trait LayerInstance {
@@ -29,6 +27,10 @@ pub trait LayerInstance {
 
     fn variables(&self) -> &[LayerVariable] {
         &[]
+    }
+
+    fn output_shape(&self, input_shape: &ndarray::IxDyn) -> ndarray::IxDyn {
+        self.expression(algebra::expr(ndarray::Array::zeros(input_shape.clone()))).shape()
     }
 }
 

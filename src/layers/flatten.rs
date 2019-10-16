@@ -1,4 +1,4 @@
-use super::super::{algebra, Layer, LayerInstance};
+use super::super::{Layer, LayerInstance};
 
 use ndarray::Dimension;
 
@@ -6,23 +6,11 @@ pub struct Flatten {}
 
 impl Layer for Flatten {
     fn init(&self, _namespace: &str, input_shape: &ndarray::IxDyn) -> Box<LayerInstance> {
-        Box::new(FlattenInstance{
-            output_size: input_shape.size(),
+        let output_size = input_shape.size();
+        Box::new(super::Instance{
+            expression: move |input| input.reshape(ndarray::Ix1(output_size)),
+            variables: vec![],
         })
-    }
-
-    fn output_shape(&self, input_shape: &ndarray::IxDyn) -> ndarray::IxDyn {
-        ndarray::Ix1(input_shape.size()).into_dyn()
-    }
-}
-
-pub struct FlattenInstance {
-    output_size: usize,
-}
-
-impl LayerInstance for FlattenInstance {
-    fn expression(&self, input: algebra::Expr) -> algebra::Expr {
-        input.reshape(ndarray::Ix1(self.output_size))
     }
 }
 

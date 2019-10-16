@@ -1,10 +1,13 @@
 use std::rc::Rc;
 
-use super::{algebra};
+use super::{algebra, LayerInstance, LayerVariable};
 
 pub mod conv2d; pub use conv2d::*;
 pub mod dense; pub use dense::*;
 pub mod flatten; pub use flatten::*;
+pub mod reshape; pub use reshape::*;
+pub mod residual; pub use residual::*;
+pub mod sequential; pub use sequential::*;
 
 struct LayerVariablesBuilder {
     namespace: String,
@@ -29,5 +32,24 @@ impl LayerVariablesBuilder {
         };
         self.variables.push(v.clone());
         algebra::v(v.name, v.value)
+    }
+}
+
+pub struct Instance<F>
+    where F: Fn(algebra::Expr) -> algebra::Expr
+{
+    expression: F,
+    variables: Vec<LayerVariable>,
+}
+
+impl<F> LayerInstance for Instance<F>
+    where F: Fn(algebra::Expr) -> algebra::Expr
+{
+    fn expression(&self, input: algebra::Expr) -> algebra::Expr {
+        (self.expression)(input)
+    }
+
+    fn variables(&self) -> &[LayerVariable] {
+        self.variables.as_slice()
     }
 }

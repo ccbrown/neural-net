@@ -1,5 +1,5 @@
 use super::{LayerVariablesBuilder};
-use super::super::{algebra, Layer, LayerInstance, LayerVariable};
+use super::super::{algebra, Layer, LayerInstance};
 
 use ndarray::Dimension;
 
@@ -19,37 +19,15 @@ impl<Activation, KernelInitializer> Layer for Dense<Activation, KernelInitialize
 {
     fn init(&self, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<LayerInstance> {
         let mut lv_builder = LayerVariablesBuilder::new(namespace);
-        Box::new(DenseInstance{
-            activation: self.activation.clone(),
-            biases: lv_builder.append("b", ndarray::Array::zeros(self.output_size)),
-            weights: lv_builder.append("w", (self.kernel_initializer)(&ndarray::Ix2(self.output_size, input_shape.size()).into_dyn())),
+        let activation = self.activation.clone();
+        let biases = lv_builder.append("b", ndarray::Array::zeros(self.output_size));
+        let weights = lv_builder.append("w", (self.kernel_initializer)(&ndarray::Ix2(self.output_size, input_shape.size()).into_dyn()));
+        Box::new(super::Instance{
+            expression: move |input| {
+                (activation)(algebra::matvecmul(weights.clone(), input) + biases.clone())
+            },
             variables: lv_builder.variables,
         })
-    }
-
-    fn output_shape(&self, _input_shape: &ndarray::IxDyn) -> ndarray::IxDyn {
-        ndarray::Ix1(self.output_size).into_dyn()
-    }
-}
-
-pub struct DenseInstance<Activation>
-    where Activation: Fn(algebra::Expr) -> algebra::Expr
-{
-    activation: Activation,
-    biases: algebra::Expr,
-    weights: algebra::Expr,
-    variables: Vec<LayerVariable>,
-}
-
-impl<Activation> LayerInstance for DenseInstance<Activation>
-    where Activation: Fn(algebra::Expr) -> algebra::Expr
-{
-    fn expression(&self, input: algebra::Expr) -> algebra::Expr {
-        (self.activation)(algebra::matvecmul(self.weights.clone(), input) + self.biases.clone())
-    }
-
-    fn variables(&self) -> &[LayerVariable] {
-        self.variables.as_slice()
     }
 }
 
