@@ -2,6 +2,8 @@
 
 This program loads pretrained weights for the Darknet-53 neural net and uses it to classify images. To run it, you'll need to download the pretrained weights file ([darknet53.weights](https://pjreddie.com/media/files/darknet53.weights)) to this directory. Once you do that, just `cargo run --release`. The example program will use those weights to classify dog.jpg:
 
+![dog.jpg](dog.jpg)
+
 The reference implementation ([github.com/pjreddie/darknet](https://github.com/pjreddie/darknet/)):
 
 ```
