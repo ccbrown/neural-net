@@ -22,6 +22,6 @@ mod tests {
     fn test() {
         let flat = ndarray::Array::range(0.0, 4.0, 1.0);
         let square = flat.clone().into_shape((2, 2)).unwrap().into_dyn();
-        assert_eq!(Flatten{}.init("l", &square.dim()).eval(square.view()), flat.into_dyn());
+        assert_eq!(Box::new(Flatten{}).init("l", &square.dim()).eval(square.view()), flat.into_dyn());
     }
 }

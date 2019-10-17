@@ -41,21 +41,21 @@ mod tests {
     #[test]
     fn test() {
         let a = ndarray::Array::range(0.0, 16.0, 1.0).into_dyn();
-        assert_eq!(Dense{
+        assert_eq!(Box::new(Dense{
             activation: |x| x + 1.0,
             kernel_initializer: initializers::zeros,
             output_size: 4,
-        }.init("l", &a.dim()).eval(a.view()), ndarray::Array::ones(4).into_dyn());
+        }).init("l", &a.dim()).eval(a.view()), ndarray::Array::ones(4).into_dyn());
     }
 
     #[test]
     fn test_gradients() {
         let input = algebra::v("i", Rc::new(algebra::VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
-        let l = Dense{
+        let l = Box::new(Dense{
             activation: activations::softmax,
             kernel_initializer: initializers::zeros,
             output_size: 3,
-        }.init("l", &input.shape()).expression(input);
+        }).init("l", &input.shape()).expression(input);
         let loss = losses::categorical_cross_entropy(l.clone(), algebra::expr(ndarray::arr1(&[0.0, 0.0, 1.0])));
 
         // import tensorflow as tf

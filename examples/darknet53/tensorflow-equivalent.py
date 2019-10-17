@@ -29,7 +29,7 @@ class DarknetConvolutional(keras.Sequential):
         self.batch_normalize = batch_normalize
         self.size = size
         if batch_normalize:
-            self.add(keras.layers.BatchNormalization(epsilon=1e-5, momentum=0.9))
+            self.add(keras.layers.BatchNormalization(epsilon=1e-5))
         if activation == 'leaky':
             self.add(keras.layers.LeakyReLU(alpha=0.1))
 

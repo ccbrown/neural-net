@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use ndarray::Dimension;
 
 pub mod add; pub use add::*;
-pub mod bias_add; pub use bias_add::*;
+pub mod broadcast_to; pub use broadcast_to::*;
 pub mod cmp; pub use cmp::*;
 pub mod conv2d; pub use conv2d::*;
 pub mod div; pub use div::*;
@@ -16,10 +16,12 @@ pub mod ln; pub use ln::*;
 pub mod matmul; pub use matmul::*;
 pub mod matvecmul; pub use matvecmul::*;
 pub mod mul; pub use mul::*;
+pub mod reduce_sum; pub use reduce_sum::*;
 pub mod reshape; pub use reshape::*;
 pub mod softmax; pub use softmax::*;
 pub mod sub; pub use sub::*;
 pub mod square; pub use square::*;
+pub mod sqrt; pub use sqrt::*;
 pub mod sum; pub use sum::*;
 pub mod transpose; pub use transpose::*;
 pub mod unevaluable; pub use unevaluable::*;
@@ -105,6 +107,12 @@ impl Expr {
 
     pub fn square(&self) -> Expr {
         Expr::new(square::Square{
+            expr: self.clone(),
+        })
+    }
+
+    pub fn sqrt(&self) -> Expr {
+        Expr::new(sqrt::Sqrt{
             expr: self.clone(),
         })
     }

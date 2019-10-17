@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::{algebra, LayerInstance, LayerVariable};
 
+pub mod batch_normalization; pub use batch_normalization::*;
 pub mod conv2d; pub use conv2d::*;
 pub mod dense; pub use dense::*;
 pub mod flatten; pub use flatten::*;

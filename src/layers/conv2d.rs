@@ -38,7 +38,7 @@ impl<Activation, KernelInitializer> Layer for Conv2D<Activation, KernelInitializ
             expression: move |input| {
                 let mut result = algebra::conv2d(input, kernel.clone(), stride, padding);
                 if let Some(ref biases) = biases {
-                    result = algebra::bias_add(result, biases.clone());
+                    result = result.clone() + algebra::broadcast_to(biases.clone(), result.shape());
                 }
                 (activation)(result)
             },
