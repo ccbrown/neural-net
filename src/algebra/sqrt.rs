@@ -28,9 +28,9 @@ impl ExprImpl for Sqrt {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
         // TODO
-        self.expr.accumulate_gradients(output.clone() * 2.0 * self.expr.clone(), gradients);
+        vec![Some(output.clone() * 2.0 * self.expr.clone())]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

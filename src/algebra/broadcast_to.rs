@@ -32,7 +32,7 @@ impl ExprImpl for BroadcastTo {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
         let expr_shape = self.expr.shape();
         let missing = self.shape.ndim() - expr_shape.ndim();
         let mut reduction_axes: Vec<_> = (0..missing).collect();
@@ -41,7 +41,7 @@ impl ExprImpl for BroadcastTo {
                 reduction_axes.push(missing + i);
             }
         }
-        self.expr.accumulate_gradients(super::reduce_sum(output, reduction_axes).reshape(expr_shape), gradients);
+        vec![Some(super::reduce_sum(output, reduction_axes).reshape(expr_shape))]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

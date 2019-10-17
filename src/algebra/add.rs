@@ -55,9 +55,8 @@ impl ExprImpl for Add {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.left.accumulate_gradients(output.clone(), gradients);
-        self.right.accumulate_gradients(output.clone(), gradients);
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+        vec![Some(output.clone()), Some(output.clone())]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

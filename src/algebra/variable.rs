@@ -61,11 +61,12 @@ impl ExprImpl for Variable {
         Expr::new(self.clone())
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
         gradients.expressions.insert(self.name.clone(), match gradients.expressions.get(&self.name) {
             Some(grad) => grad.clone() + output,
             None => output,
         });
+        vec![]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

@@ -31,8 +31,8 @@ impl ExprImpl for Transpose {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.expr.accumulate_gradients(output.transpose(), gradients);
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+        vec![Some(output.transpose())]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

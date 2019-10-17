@@ -50,8 +50,8 @@ pub trait ExprImpl: fmt::Display {
     fn shape(&self) -> ndarray::IxDyn;
     fn is_constant(&self) -> bool;
     fn propagate_constants(&self) -> Expr;
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut Gradients);
     fn inputs(&self) -> Vec<&Expr>;
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut Gradients) -> Vec<Option<Expr>>;
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
         let mut inputs = Vec::new();
@@ -77,12 +77,25 @@ impl Expr {
         self.id
     }
 
+    // This is performs automatic differentiation. It's a somewhat naive implementation and can
+    // blow up for complex graphs (try calling it on darknet53 for example). A big potential
+    // optimization would be to visit expressions in dependency-order, guaranteeing that
+    // accumulate_gradients is not called more than once per expression.
     pub fn gradients(&self) -> HashMap<String, Expr> {
         let mut gradients = Gradients{
             expressions: HashMap::new(),
         };
-        let output = expr(ndarray::Array::ones(self.shape()));
-        self.accumulate_gradients(output, &mut gradients);
+        let mut to_visit = Vec::new();
+        to_visit.push((self.clone(), expr(ndarray::Array::ones(self.shape()))));
+        while to_visit.len() > 0 {
+            let next = to_visit.last().unwrap().clone();
+            to_visit.pop();
+            for (i, grad) in next.0.accumulate_gradients(next.1.clone(), &mut gradients).iter().enumerate() {
+                if let Some(grad) = grad {
+                    to_visit.push((next.0.inputs()[i].clone(), grad.clone()));
+                }
+            }
+        }
         gradients.expressions
     }
 
@@ -177,7 +190,7 @@ impl ExprImpl for Expr {
         result
     }
 
-    fn accumulate_gradients(&self, mut output: Expr, gradients: &mut Gradients) {
+    fn accumulate_gradients(&self, mut output: Expr, gradients: &mut Gradients) -> Vec<Option<Expr>> {
         if self.shape().ndim() == 0 && output.shape().ndim() > 0 {
             // reduce gradients to scalars when our ancestor broadcasts
             output = output.sum();

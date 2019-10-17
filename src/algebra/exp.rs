@@ -28,8 +28,8 @@ impl ExprImpl for Exp {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.power.accumulate_gradients(output.clone() * Expr::new(self.clone()), gradients);
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+        vec![Some(output.clone() * Expr::new(self.clone()))]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

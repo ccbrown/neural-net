@@ -49,11 +49,10 @@ impl ExprImpl for MatVecMul {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
         let output2 = output.reshape(ndarray::Ix2(output.shape().size(), 1));
         let b2 = self.b.reshape(ndarray::Ix2(1, self.b.shape().size()));
-        self.a.accumulate_gradients(super::matmul(output2, b2), gradients);
-        self.b.accumulate_gradients(matvecmul(self.a.transpose(), output.clone()), gradients);
+        vec![Some(super::matmul(output2, b2)), Some(matvecmul(self.a.transpose(), output.clone()))]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

@@ -3,6 +3,9 @@ use super::super::{algebra, Layer, LayerInstance};
 
 use ndarray::Dimension;
 
+// Performs batch normalization during inference. This layer only supports inference and does NOT
+// implement proper batch normalization during training since this library has no concept of
+// batches right now.
 pub struct BatchNormalization<BetaInitializer, GammaInitializer, MovingMeanInitializer, MovingVarianceInitializer>
     where BetaInitializer: Fn(&ndarray::IxDyn) -> ndarray::ArrayD<f32>,
           GammaInitializer: Fn(&ndarray::IxDyn) -> ndarray::ArrayD<f32>,

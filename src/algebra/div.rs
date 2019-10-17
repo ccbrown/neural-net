@@ -50,9 +50,8 @@ impl ExprImpl for Div {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.num.accumulate_gradients(output.clone() / self.den.clone(), gradients);
-        self.den.accumulate_gradients(output.clone() * (-1.0 * self.num.clone() / self.den.square()), gradients);
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+        vec![Some(output.clone() / self.den.clone()), Some(output.clone() * (-1.0 * self.num.clone() / self.den.square()))]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

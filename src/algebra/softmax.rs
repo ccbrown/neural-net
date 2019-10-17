@@ -29,9 +29,9 @@ impl ExprImpl for Softmax {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
         let softmax = softmax(self.expr.clone());
-        self.expr.accumulate_gradients((output.clone() - (output.clone() * softmax.clone()).sum()) * softmax, gradients);
+        vec![Some((output.clone() - (output.clone() * softmax.clone()).sum()) * softmax)]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

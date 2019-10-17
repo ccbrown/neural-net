@@ -30,8 +30,8 @@ impl ExprImpl for Sum {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.expr.accumulate_gradients(output * super::expr(ndarray::Array::ones(self.expr.shape())), gradients)
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+        vec![Some(output * super::expr(ndarray::Array::ones(self.expr.shape())))]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
