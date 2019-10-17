@@ -67,4 +67,4 @@ You can go to the [examples/fashion-mnist](examples/fashion-mnist) directory and
 
 ## A More Advanced Example
 
-Since the library is general purpose, we can implement some more advanced networks without adding too much complexity. For a slightly more advanced network, see the [examples/darknet53](examples/darknet53) directory. It implements inference for the Darknet53 using pre-trained weights to classify images as belonging to one of 1000 ImageNet classes.
+Since the library is general purpose, we can implement some more advanced networks without adding too much complexity. For a slightly more advanced network, see the [examples/darknet53](examples/darknet53) directory. It implements inference for the Darknet53 network using pre-trained weights to classify images as belonging to one of 1000 ImageNet classes.

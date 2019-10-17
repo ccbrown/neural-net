@@ -29,8 +29,7 @@ impl ExprImpl for Sqrt {
     }
 
     fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
-        // TODO
-        vec![Some(output.clone() * 2.0 * self.expr.clone())]
+        vec![Some(output.clone() * 0.5 / self.expr.sqrt())]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
@@ -41,5 +40,16 @@ impl ExprImpl for Sqrt {
 impl fmt::Display for Sqrt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "sqrt({})", self.expr)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::*;
+
+    #[test]
+    fn test() {
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[1.0, 2.0]))));
+        assert_eq!((2.0 * x.sqrt()).gradient("x").eval(), ndarray::arr1(&[1.0, 0.70710677]).into_dyn());
     }
 }
