@@ -19,7 +19,7 @@ pub struct MNISTImageFile<R: Read> {
 }
 
 impl<R: Read> MNISTImageFile<R> {
-    pub fn new(mut file: R) -> Result<MNISTImageFile<R>, Box<Error>> {
+    pub fn new(mut file: R) -> Result<MNISTImageFile<R>, Box<dyn Error>> {
         let magic = file.read_u32::<BigEndian>()?;
         if magic != 0x00000803 {
             bail!("invalid magic for mnist image file");
@@ -59,7 +59,7 @@ pub struct MNISTLabelFile<R: Read> {
 }
 
 impl<R: Read> MNISTLabelFile<R> {
-    pub fn new(mut file: R) -> Result<MNISTLabelFile<R>, Box<Error>> {
+    pub fn new(mut file: R) -> Result<MNISTLabelFile<R>, Box<dyn Error>> {
         let magic = file.read_u32::<BigEndian>()?;
         if magic != 0x00000801 {
             bail!("invalid magic for mnist label file");
@@ -95,7 +95,7 @@ impl MNIST {
     // Creates a new MNIST dataset. The inputs are 2d images with grayscale pixels in the range of
     // 0.0 to 1.0. The targets are zero-dimensional arrays containing the numeric label associated
     // with the input.
-    pub fn new<IR: Read, LR: Read>(images: IR, labels: LR) -> Result<MNIST, Box<Error>> {
+    pub fn new<IR: Read, LR: Read>(images: IR, labels: LR) -> Result<MNIST, Box<dyn Error>> {
         let images = MNISTImageFile::new(images)?;
         let mut images: Vec<_> = images.collect();
         for i in 0..images.len() {
@@ -150,11 +150,11 @@ impl Dataset for MNIST {
         self.images.len()
     }
 
-    fn input(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<Error>> {
+    fn input(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<dyn Error>> {
         Ok(self.images[i].view())
     }
 
-    fn target(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<Error>> {
+    fn target(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<dyn Error>> {
         Ok(self.labels[i].view())
     }
 }

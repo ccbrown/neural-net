@@ -1,6 +1,6 @@
 extern crate byteorder;
 #[macro_use] extern crate log;
-extern crate ndarray;
+#[macro_use] extern crate ndarray;
 extern crate rand;
 extern crate reqwest;
 #[macro_use] extern crate simple_error;
@@ -15,11 +15,7 @@ pub struct LayerVariable {
 }
 
 pub trait Layer {
-    fn init(&self, namespace: &str) -> Box<LayerInstance>;
-
-    fn input_shape(&self) -> ndarray::IxDyn;
-
-    fn output_shape(&self) -> ndarray::IxDyn;
+    fn init(self: Box<Self>, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<dyn LayerInstance>;
 }
 
 pub trait LayerInstance {
@@ -32,14 +28,18 @@ pub trait LayerInstance {
     fn variables(&self) -> &[LayerVariable] {
         &[]
     }
+
+    fn output_shape(&self, input_shape: &ndarray::IxDyn) -> ndarray::IxDyn {
+        self.expression(algebra::expr(ndarray::Array::zeros(input_shape.clone()))).shape()
+    }
 }
 
 pub trait Dataset {
     fn len(&self) -> usize;
 
-    fn input(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<Error>>;
+    fn input(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<dyn Error>>;
 
-    fn target(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<Error>>;
+    fn target(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<dyn Error>>;
 }
 
 pub mod algebra;

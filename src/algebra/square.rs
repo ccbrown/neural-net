@@ -27,8 +27,8 @@ impl ExprImpl for Square {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.expr.accumulate_gradients(output.clone() * 2.0 * self.expr.clone(), gradients);
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+        vec![Some(output.clone() * 2.0 * self.expr.clone())]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

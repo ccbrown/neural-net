@@ -6,7 +6,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use ndarray::Dimension;
 
 pub mod add; pub use add::*;
+pub mod broadcast_to; pub use broadcast_to::*;
 pub mod cmp; pub use cmp::*;
+pub mod conv2d; pub use conv2d::*;
 pub mod div; pub use div::*;
 pub mod exp; pub use exp::*;
 pub mod ternary; pub use ternary::*;
@@ -14,10 +16,12 @@ pub mod ln; pub use ln::*;
 pub mod matmul; pub use matmul::*;
 pub mod matvecmul; pub use matvecmul::*;
 pub mod mul; pub use mul::*;
+pub mod reduce_sum; pub use reduce_sum::*;
 pub mod reshape; pub use reshape::*;
 pub mod softmax; pub use softmax::*;
 pub mod sub; pub use sub::*;
 pub mod square; pub use square::*;
+pub mod sqrt; pub use sqrt::*;
 pub mod sum; pub use sum::*;
 pub mod transpose; pub use transpose::*;
 pub mod variable; pub use variable::*;
@@ -33,7 +37,7 @@ pub mod constant; pub use constant::*;
 // implemented.
 #[derive(Clone)]
 pub struct Expr {
-    expr: Rc<ExprImpl>,
+    expr: Rc<dyn ExprImpl>,
     id: usize,
 }
 
@@ -46,8 +50,8 @@ pub trait ExprImpl: fmt::Display {
     fn shape(&self) -> ndarray::IxDyn;
     fn is_constant(&self) -> bool;
     fn propagate_constants(&self) -> Expr;
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut Gradients);
     fn inputs(&self) -> Vec<&Expr>;
+    fn accumulate_gradients(&self, output: Expr, gradients: &mut Gradients) -> Vec<Option<Expr>>;
 
     fn eval(&self) -> ndarray::ArrayD<f32> {
         let mut inputs = Vec::new();
@@ -73,12 +77,25 @@ impl Expr {
         self.id
     }
 
+    // This is performs automatic differentiation. It's a somewhat naive implementation and can
+    // blow up for complex graphs (try calling it on darknet53 for example). A big potential
+    // optimization would be to visit expressions in dependency-order, guaranteeing that
+    // accumulate_gradients is not called more than once per expression.
     pub fn gradients(&self) -> HashMap<String, Expr> {
         let mut gradients = Gradients{
             expressions: HashMap::new(),
         };
-        let output = expr(ndarray::Array::ones(self.shape()));
-        self.accumulate_gradients(output, &mut gradients);
+        let mut to_visit = Vec::new();
+        to_visit.push((self.clone(), expr(ndarray::Array::ones(self.shape()))));
+        while to_visit.len() > 0 {
+            let next = to_visit.last().unwrap().clone();
+            to_visit.pop();
+            for (i, grad) in next.0.accumulate_gradients(next.1.clone(), &mut gradients).iter().enumerate() {
+                if let Some(grad) = grad {
+                    to_visit.push((next.0.inputs()[i].clone(), grad.clone()));
+                }
+            }
+        }
         gradients.expressions
     }
 
@@ -102,6 +119,12 @@ impl Expr {
 
     pub fn square(&self) -> Expr {
         Expr::new(square::Square{
+            expr: self.clone(),
+        })
+    }
+
+    pub fn sqrt(&self) -> Expr {
+        Expr::new(sqrt::Sqrt{
             expr: self.clone(),
         })
     }
@@ -167,7 +190,7 @@ impl ExprImpl for Expr {
         result
     }
 
-    fn accumulate_gradients(&self, mut output: Expr, gradients: &mut Gradients) {
+    fn accumulate_gradients(&self, mut output: Expr, gradients: &mut Gradients) -> Vec<Option<Expr>> {
         if self.shape().ndim() == 0 && output.shape().ndim() > 0 {
             // reduce gradients to scalars when our ancestor broadcasts
             output = output.sum();
@@ -184,7 +207,7 @@ impl ExprImpl for Expr {
 }
 
 impl std::ops::Deref for Expr {
-    type Target = Rc<ExprImpl>;
+    type Target = Rc<dyn ExprImpl>;
 
     fn deref(&self) -> &Self::Target {
         &self.expr

@@ -86,7 +86,7 @@ impl ExprImpl for Cmp {
         }
     }
 
-    fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) {
+    fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
         panic!("gradients are not supported for comparisons")
     }
 

@@ -4,7 +4,7 @@ This library is my from-scratch neural net. Its purpose is to be educational. Wr
 
 ## Goal
 
-The goal was to create a library that was capable of classifying images from the [Fashion-MNIST dataset](https://github.com/zalandoresearch/fashion-mnist). The MNIST dataset is a common "hello, world" of image classification, so it's a good place to start.
+The goal was to create a general purpose library capable of classifying images from the [Fashion-MNIST dataset](https://github.com/zalandoresearch/fashion-mnist). The MNIST dataset is a common "hello, world" of image classification, so it's a good place to start.
 
 ## The Neural Net
 
@@ -64,3 +64,7 @@ I leaned heavily on Tensorflow's [tf.gradients](https://www.tensorflow.org/api_d
 The network successfully trains on the dataset with results similar to the Tensorflow equivalent. The performance is acceptably close. Tensorflow is still faster, but not by multiple orders of magnitude.
 
 You can go to the [examples/fashion-mnist](examples/fashion-mnist) directory and `cargo run --release` to take it for a spin.
+
+## A More Advanced Example
+
+Since the library is general purpose, we can implement some more advanced networks without adding too much complexity. For a slightly more advanced network, see the [examples/darknet53](examples/darknet53) directory. It implements inference for the Darknet53 network using pre-trained weights to classify images as belonging to one of 1000 ImageNet classes.

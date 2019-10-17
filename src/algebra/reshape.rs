@@ -28,8 +28,8 @@ impl ExprImpl for Reshape {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.expr.accumulate_gradients(output.reshape(self.expr.shape()), gradients);
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+        vec![Some(output.reshape(self.expr.shape()))]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

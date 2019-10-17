@@ -23,8 +23,8 @@ impl ExprImpl for Constant {
         super::expr(self.eval())
     }
 
-    fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) {
-        // do nothing
+    fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+        vec![]
     }
 
     fn inputs(&self) -> Vec<&Expr> {

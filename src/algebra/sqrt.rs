@@ -2,15 +2,14 @@ use std::fmt;
 
 use super::{Expr, ExprImpl};
 
-pub struct Softmax {
+pub struct Sqrt {
     pub expr: Expr,
 }
 
-impl ExprImpl for Softmax {
+// Computes the element-wise square root of the expression.
+impl ExprImpl for Sqrt {
     fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
-        let v = inputs[0].mapv(|v| v.exp());
-        let sum = v.sum();
-        v / sum
+        inputs[0].mapv(|x| x.sqrt())
     }
 
     fn shape(&self) -> ndarray::IxDyn {
@@ -25,13 +24,12 @@ impl ExprImpl for Softmax {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            self.expr.propagate_constants().softmax()
+            self.expr.propagate_constants().sqrt()
         }
     }
 
     fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
-        let softmax = softmax(self.expr.clone());
-        vec![Some((output.clone() - (output.clone() * softmax.clone()).sum()) * softmax)]
+        vec![Some(output.clone() * 0.5 / self.expr.sqrt())]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
@@ -39,14 +37,19 @@ impl ExprImpl for Softmax {
     }
 }
 
-impl fmt::Display for Softmax {
+impl fmt::Display for Sqrt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "softmax({})", self.expr)
+        write!(f, "sqrt({})", self.expr)
     }
 }
 
-pub fn softmax(expr: Expr) -> Expr {
-    Expr::new(Softmax{
-        expr: expr,
-    })
+#[cfg(test)]
+mod tests {
+    use super::super::*;
+
+    #[test]
+    fn test() {
+        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[1.0, 2.0]))));
+        assert_eq!((2.0 * x.sqrt()).gradient("x").eval(), ndarray::arr1(&[1.0, 0.70710677]).into_dyn());
+    }
 }

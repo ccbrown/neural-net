@@ -49,11 +49,10 @@ impl ExprImpl for MatVecMul {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
         let output2 = output.reshape(ndarray::Ix2(output.shape().size(), 1));
         let b2 = self.b.reshape(ndarray::Ix2(1, self.b.shape().size()));
-        self.a.accumulate_gradients(super::matmul(output2, b2), gradients);
-        self.b.accumulate_gradients(matvecmul(self.a.transpose(), output.clone()), gradients);
+        vec![Some(super::matmul(output2, b2)), Some(matvecmul(self.a.transpose(), output.clone()))]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
@@ -82,7 +81,6 @@ mod tests {
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0]))));
-        println!("{}", matvecmul(x.clone(), y.clone()).gradient("x"));
         assert_eq!(matvecmul(x.clone(), y.clone()).gradient("x").eval(), ndarray::arr2(&[[0.0, 1.0], [0.0, 1.0]]).into_dyn());
         assert_eq!(matvecmul(x.clone(), y.clone()).gradient("y").eval(), ndarray::arr1(&[2.0, 4.0]).into_dyn());
 

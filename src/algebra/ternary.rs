@@ -81,9 +81,8 @@ impl ExprImpl for Ternary {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) {
-        self.true_expr.accumulate_gradients(ternary(self.condition.clone(), output.clone(), super::expr(0.0)), gradients);
-        self.false_expr.accumulate_gradients(ternary(self.condition.clone(), super::expr(0.0), output), gradients);
+    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+        vec![None, Some(ternary(self.condition.clone(), output.clone(), super::expr(0.0))), Some(ternary(self.condition.clone(), super::expr(0.0), output))]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
