@@ -1,0 +1,13 @@
+[package]
+name = "darknet53"
+version = "0.1.0"
+authors = ["Christopher Brown <ccbrown112@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+byteorder = "1.3.2"
+neural_net = { path = "../.." }
+ndarray = "0.12.1"
+log = "0.4.8"
+env_logger = "0.7.0"
+simple-error = "0.2.1"

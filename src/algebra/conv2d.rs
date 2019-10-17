@@ -102,12 +102,10 @@ impl ExprImpl for Conv2D {
         }
     }
 
-    fn accumulate_gradients(&self, _output: Expr, gradients: &mut super::Gradients) {
+    fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) {
         // None of the examples require training of neural nets with convolutional layers, so I'll just
         // leave this as an "exercise for the reader".
-        let reason = "Conv2D gradients have not been implemented.";
-        self.input.accumulate_gradients(super::unevaluable(self.input.shape().clone(), reason), gradients);
-        self.kernel.accumulate_gradients(super::unevaluable(self.kernel.shape().clone(), reason), gradients);
+        panic!("Conv2D gradients have not been implemented.");
     }
 
     fn inputs(&self) -> Vec<&Expr> {

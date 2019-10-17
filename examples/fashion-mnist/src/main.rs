@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut training_dataset = neural_net::datasets::MNIST::new(training_images, training_labels)?.to_one_hot(CLASS_NAMES.len());
 
     info!("compiling model");
-    let mut model = model.compile(training_dataset.target_shape(), neural_net::losses::categorical_cross_entropy);
+    let mut model = model.compile_for_training(training_dataset.target_shape(), neural_net::losses::categorical_cross_entropy);
 
     info!("fitting model");
     model.fit(&mut training_dataset, 0.003, 5)?;

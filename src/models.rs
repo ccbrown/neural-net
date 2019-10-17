@@ -25,23 +25,36 @@ impl Sequential {
         Ok(())
     }
 
-    // Once the model is final, it needs to be "compiled" before it can do anything. This just does
-    // a bit of math up front before returning the object that can be used for training or
-    // inference.
-    pub fn compile<D, L>(mut self, target_shape: D, loss_function: L) -> CompiledSequential
+    pub fn compile_for_inference(mut self) -> CompiledInferenceSequential {
+        let input_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(self.input_shape)));
+        let input = algebra::v("i", input_value.clone());
+        let mut output = input.clone();
+        for (i, layer) in self.layers.drain(..).enumerate() {
+            let instance = layer.init(format!("l{}", i).as_str(), &output.shape());
+            output = instance.expression(output);
+        }
+        let mut graph = graph::Graph::new();
+        let output_node_id = graph.add(output);
+        CompiledInferenceSequential{
+            input: input_value,
+            graph: graph,
+            output_node_id: output_node_id,
+        }
+    }
+
+    // Once the model is final, it needs to be "compiled" before it can do much. This just does a
+    // bit of math up front before returning the object that can be used for training or inference.
+    pub fn compile_for_training<D, L>(mut self, target_shape: D, loss_function: L) -> CompiledTrainingSequential
         where D: ndarray::Dimension,
               L: Fn(algebra::Expr, algebra::Expr) -> algebra::Expr + 'static,
     {
-        let mut variable_names = vec![];
         let input_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(self.input_shape)));
         let input = algebra::v("i", input_value.clone());
-        variable_names.push("i".to_string());
         let mut output = input.clone();
         let mut trainable_variables = Vec::new();
         for (i, layer) in self.layers.drain(..).enumerate() {
             let instance = layer.init(format!("l{}", i).as_str(), &output.shape());
             for v in instance.variables() {
-                variable_names.push(v.name.clone());
                 trainable_variables.push(TrainableVariable{
                     name: v.name.clone(),
                     value: v.value.clone(),
@@ -52,7 +65,6 @@ impl Sequential {
         }
         let target_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(target_shape)));
         let target = algebra::v("t", target_value.clone());
-        variable_names.push("t".to_string());
         let loss = loss_function(output.clone(), target);
         let mut graph = graph::Graph::new();
         let gradients = loss.gradients();
@@ -60,7 +72,7 @@ impl Sequential {
             tv.gradient_node_id = graph.add(gradients.get(&tv.name).unwrap().clone());
         }
         let output_node_id = graph.add(output);
-        CompiledSequential{
+        CompiledTrainingSequential{
             input: input_value,
             target: target_value,
             trainable_variables: trainable_variables,
@@ -76,7 +88,24 @@ struct TrainableVariable {
     gradient_node_id: usize,
 }
 
-pub struct CompiledSequential {
+pub struct CompiledInferenceSequential {
+    input: Rc<algebra::VariableValue>,
+    graph: graph::Graph,
+    output_node_id: usize,
+}
+
+impl CompiledInferenceSequential {
+    pub fn predict<S, D>(&mut self, input: ndarray::ArrayBase<S, D>) -> &ndarray::ArrayD<f32> 
+        where S: ndarray::Data<Elem=f32>,
+              D: ndarray::Dimension,
+    {
+        (*self.input).set(input);
+        self.graph.eval_nodes(vec![self.output_node_id]);
+        self.graph.node_output(self.output_node_id)
+    }
+}
+
+pub struct CompiledTrainingSequential {
     input: Rc<algebra::VariableValue>,
     target: Rc<algebra::VariableValue>,
     trainable_variables: Vec<TrainableVariable>,
@@ -99,7 +128,7 @@ fn max_index<S, D>(a: &ndarray::ArrayBase<S, D>) -> usize
     selection
 }
 
-impl CompiledSequential {
+impl CompiledTrainingSequential {
     // Trains the model using stochastic gradient descent.
     pub fn fit<D: Dataset>(&mut self, dataset: &mut D, learning_rate: f32, epochs: usize) -> Result<(), Box<dyn Error>> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);

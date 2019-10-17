@@ -24,7 +24,6 @@ pub mod square; pub use square::*;
 pub mod sqrt; pub use sqrt::*;
 pub mod sum; pub use sum::*;
 pub mod transpose; pub use transpose::*;
-pub mod unevaluable; pub use unevaluable::*;
 pub mod variable; pub use variable::*;
 pub mod constant; pub use constant::*;
 
