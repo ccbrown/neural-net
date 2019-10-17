@@ -24,3 +24,12 @@ pub fn zeros(shape: &ndarray::IxDyn) -> ndarray::ArrayD<f32> {
 pub fn ones(shape: &ndarray::IxDyn) -> ndarray::ArrayD<f32> {
     ndarray::Array::ones(shape.clone())
 }
+
+pub fn copy(v: ndarray::ArrayD<f32>) -> impl Fn(&ndarray::IxDyn) -> ndarray::ArrayD<f32> {
+    move |shape| {
+        if *shape != v.dim() {
+            panic!("differing shapes for copy initializer: got {:?}, expected {:?}", shape, v.dim());
+        }
+        v.clone()
+    }
+}
