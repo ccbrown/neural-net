@@ -1,10 +1,10 @@
 use std::error::Error;
 use std::rc::Rc;
 
-use rand::SeedableRng;
 use rand::seq::SliceRandom;
+use rand::SeedableRng;
 
-use super::{algebra, Dataset, graph, Layer};
+use super::{algebra, graph, Dataset, Layer};
 
 // Sequential is used to build a neural network based on layers that are activated in sequence.
 pub struct Sequential {
@@ -14,7 +14,7 @@ pub struct Sequential {
 
 impl Sequential {
     pub fn new<D: ndarray::Dimension>(input_shape: D) -> Sequential {
-        Sequential{
+        Sequential {
             input_shape: input_shape.clone().into_dyn(),
             layers: Vec::new(),
         }
@@ -26,7 +26,9 @@ impl Sequential {
     }
 
     pub fn compile_for_inference(mut self) -> CompiledInferenceSequential {
-        let input_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(self.input_shape)));
+        let input_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(
+            self.input_shape,
+        )));
         let input = algebra::v("i", input_value.clone());
         let mut output = input.clone();
         for (i, layer) in self.layers.drain(..).enumerate() {
@@ -35,7 +37,7 @@ impl Sequential {
         }
         let mut graph = graph::Graph::new();
         let output_node_id = graph.add(output);
-        CompiledInferenceSequential{
+        CompiledInferenceSequential {
             input: input_value,
             graph: graph,
             output_node_id: output_node_id,
@@ -44,18 +46,25 @@ impl Sequential {
 
     // Once the model is final, it needs to be "compiled" before it can do much. This just does a
     // bit of math up front before returning the object that can be used for training or inference.
-    pub fn compile_for_training<D, L>(mut self, target_shape: D, loss_function: L) -> CompiledTrainingSequential
-        where D: ndarray::Dimension,
-              L: Fn(algebra::Expr, algebra::Expr) -> algebra::Expr + 'static,
+    pub fn compile_for_training<D, L>(
+        mut self,
+        target_shape: D,
+        loss_function: L,
+    ) -> CompiledTrainingSequential
+    where
+        D: ndarray::Dimension,
+        L: Fn(algebra::Expr, algebra::Expr) -> algebra::Expr + 'static,
     {
-        let input_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(self.input_shape)));
+        let input_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(
+            self.input_shape,
+        )));
         let input = algebra::v("i", input_value.clone());
         let mut output = input.clone();
         let mut trainable_variables = Vec::new();
         for (i, layer) in self.layers.drain(..).enumerate() {
             let instance = layer.init(format!("l{}", i).as_str(), &output.shape());
             for v in instance.variables() {
-                trainable_variables.push(TrainableVariable{
+                trainable_variables.push(TrainableVariable {
                     name: v.name.clone(),
                     value: v.value.clone(),
                     gradient_node_id: 0,
@@ -63,7 +72,9 @@ impl Sequential {
             }
             output = instance.expression(output);
         }
-        let target_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(target_shape)));
+        let target_value = Rc::new(algebra::VariableValue::new(ndarray::Array::zeros(
+            target_shape,
+        )));
         let target = algebra::v("t", target_value.clone());
         let loss = loss_function(output.clone(), target);
         let mut graph = graph::Graph::new();
@@ -72,7 +83,7 @@ impl Sequential {
             tv.gradient_node_id = graph.add(gradients.get(&tv.name).unwrap().clone());
         }
         let output_node_id = graph.add(output);
-        CompiledTrainingSequential{
+        CompiledTrainingSequential {
             input: input_value,
             target: target_value,
             trainable_variables: trainable_variables,
@@ -95,9 +106,10 @@ pub struct CompiledInferenceSequential {
 }
 
 impl CompiledInferenceSequential {
-    pub fn predict<S, D>(&mut self, input: ndarray::ArrayBase<S, D>) -> &ndarray::ArrayD<f32> 
-        where S: ndarray::Data<Elem=f32>,
-              D: ndarray::Dimension,
+    pub fn predict<S, D>(&mut self, input: ndarray::ArrayBase<S, D>) -> &ndarray::ArrayD<f32>
+    where
+        S: ndarray::Data<Elem = f32>,
+        D: ndarray::Dimension,
     {
         (*self.input).set(input);
         self.graph.eval_nodes(vec![self.output_node_id]);
@@ -114,12 +126,18 @@ pub struct CompiledTrainingSequential {
 }
 
 fn max_index<S, D>(a: &ndarray::ArrayBase<S, D>) -> usize
-    where S: ndarray::Data<Elem=f32>,
-          D: ndarray::Dimension,
+where
+    S: ndarray::Data<Elem = f32>,
+    D: ndarray::Dimension,
 {
     let mut selection = 0;
     let mut selection_score = 0.0;
-    for (i, &v) in a.view().into_dimensionality::<ndarray::Ix1>().unwrap().indexed_iter() {
+    for (i, &v) in a
+        .view()
+        .into_dimensionality::<ndarray::Ix1>()
+        .unwrap()
+        .indexed_iter()
+    {
         if v > selection_score {
             selection = i;
             selection_score = v;
@@ -130,9 +148,18 @@ fn max_index<S, D>(a: &ndarray::ArrayBase<S, D>) -> usize
 
 impl CompiledTrainingSequential {
     // Trains the model using stochastic gradient descent.
-    pub fn fit<D: Dataset>(&mut self, dataset: &mut D, learning_rate: f32, epochs: usize) -> Result<(), Box<dyn Error>> {
+    pub fn fit<D: Dataset>(
+        &mut self,
+        dataset: &mut D,
+        learning_rate: f32,
+        epochs: usize,
+    ) -> Result<(), Box<dyn Error>> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-        let gradient_node_ids: Vec<_> = self.trainable_variables.iter().map(|v| v.gradient_node_id).collect();
+        let gradient_node_ids: Vec<_> = self
+            .trainable_variables
+            .iter()
+            .map(|v| v.gradient_node_id)
+            .collect();
         for epoch in 0..epochs {
             let mut samples: Vec<usize> = (0..dataset.len()).collect();
             samples.shuffle(&mut rng);
@@ -142,10 +169,18 @@ impl CompiledTrainingSequential {
                 (*self.target).set(dataset.target(j)?);
                 self.graph.eval_nodes(gradient_node_ids.clone());
                 for tv in self.trainable_variables.iter() {
-                    tv.value.set(tv.value.get() - self.graph.node_output(tv.gradient_node_id) * learning_rate);
+                    tv.value.set(
+                        tv.value.get()
+                            - self.graph.node_output(tv.gradient_node_id) * learning_rate,
+                    );
                 }
                 if step % 10000 == 0 {
-                    info!("epoch {}, step {}; accuracy: {}", epoch, step, self.eval_accuracy(dataset)?);
+                    info!(
+                        "epoch {}, step {}; accuracy: {}",
+                        epoch,
+                        step,
+                        self.eval_accuracy(dataset)?
+                    );
                 }
                 step += 1
             }
@@ -153,9 +188,10 @@ impl CompiledTrainingSequential {
         Ok(())
     }
 
-    pub fn predict<S, D>(&mut self, input: ndarray::ArrayBase<S, D>) -> &ndarray::ArrayD<f32> 
-        where S: ndarray::Data<Elem=f32>,
-              D: ndarray::Dimension,
+    pub fn predict<S, D>(&mut self, input: ndarray::ArrayBase<S, D>) -> &ndarray::ArrayD<f32>
+    where
+        S: ndarray::Data<Elem = f32>,
+        D: ndarray::Dimension,
     {
         (*self.input).set(input);
         self.graph.eval_nodes(vec![self.output_node_id]);

@@ -50,8 +50,15 @@ impl ExprImpl for Div {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
-        vec![Some(output.clone() / self.den.clone()), Some(output.clone() * (-1.0 * self.num.clone() / self.den.square()))]
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
+        vec![
+            Some(output.clone() / self.den.clone()),
+            Some(output.clone() * (-1.0 * self.num.clone() / self.den.square())),
+        ]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
@@ -68,7 +75,7 @@ impl fmt::Display for Div {
 impl<T: Into<Expr>> std::ops::Div<T> for Expr {
     type Output = Self;
     fn div(self, rhs: T) -> Self {
-        Expr::new(Div{
+        Expr::new(Div {
             num: self,
             den: rhs.into(),
         })
@@ -78,7 +85,7 @@ impl<T: Into<Expr>> std::ops::Div<T> for Expr {
 impl std::ops::Div<Expr> for f32 {
     type Output = Expr;
     fn div(self, rhs: Expr) -> Expr {
-        Expr::new(Div{
+        Expr::new(Div {
             num: super::expr(self),
             den: rhs,
         })
@@ -92,7 +99,10 @@ mod tests {
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (4.0 / x.clone()).gradient("x")), "(-4 / square(x))");
+        assert_eq!(
+            format!("{}", (4.0 / x.clone()).gradient("x")),
+            "(-4 / square(x))"
+        );
 
         let x = expr(ndarray::arr1(&[0.0, 1.0, 6.0]));
         let y = expr(ndarray::arr1(&[1.0, 1.0, 2.0]));
@@ -100,18 +110,36 @@ mod tests {
         assert_eq!((x / y).eval(), z.eval());
 
         let x = expr(2.0);
-        let y = expr(ndarray::arr1(&[1.0, 1.0,  2.0]));
+        let y = expr(ndarray::arr1(&[1.0, 1.0, 2.0]));
         let z = expr(ndarray::arr1(&[2.0, 2.0, 1.0]));
         assert_eq!((x.clone() / y.clone()).eval(), z.eval());
         let z = expr(ndarray::arr1(&[0.5, 0.5, 1.0]));
         assert_eq!((y / x).eval(), z.eval());
 
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
-        let y = v("y", Rc::new(VariableValue::new(ndarray::arr1(&[1.0, 1.0, 5.0]))));
-        assert_eq!((x.clone() / y.clone()).gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 0.2]).into_dyn());
-        assert_eq!((x.clone() / y.clone()).gradient("y").eval(), ndarray::arr1(&[0.0, -1.0, -0.08]).into_dyn());
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))),
+        );
+        let y = v(
+            "y",
+            Rc::new(VariableValue::new(ndarray::arr1(&[1.0, 1.0, 5.0]))),
+        );
+        assert_eq!(
+            (x.clone() / y.clone()).gradient("x").eval(),
+            ndarray::arr1(&[1.0, 1.0, 0.2]).into_dyn()
+        );
+        assert_eq!(
+            (x.clone() / y.clone()).gradient("y").eval(),
+            ndarray::arr1(&[0.0, -1.0, -0.08]).into_dyn()
+        );
 
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[1.0, 1.0, 1.0]))));
-        assert_eq!((x.clone() / x.sum()).gradient("x").eval(), ndarray::arr1(&[0.0, 0.0, 0.0]).into_dyn());
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr1(&[1.0, 1.0, 1.0]))),
+        );
+        assert_eq!(
+            (x.clone() / x.sum()).gradient("x").eval(),
+            ndarray::arr1(&[0.0, 0.0, 0.0]).into_dyn()
+        );
     }
 }

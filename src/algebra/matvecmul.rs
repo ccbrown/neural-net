@@ -49,10 +49,17 @@ impl ExprImpl for MatVecMul {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
         let output2 = output.reshape(ndarray::Ix2(output.shape().size(), 1));
         let b2 = self.b.reshape(ndarray::Ix2(1, self.b.shape().size()));
-        vec![Some(super::matmul(output2, b2)), Some(matvecmul(self.a.transpose(), output.clone()))]
+        vec![
+            Some(super::matmul(output2, b2)),
+            Some(matvecmul(self.a.transpose(), output.clone())),
+        ]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
@@ -67,7 +74,7 @@ impl fmt::Display for MatVecMul {
 }
 
 pub fn matvecmul<A: Into<Expr>, B: Into<Expr>>(a: A, b: B) -> Expr {
-    Expr::new(MatVecMul{
+    Expr::new(MatVecMul {
         a: a.into(),
         b: b.into(),
     })
@@ -79,18 +86,46 @@ mod tests {
 
     #[test]
     fn test() {
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))),
+        );
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0]))));
-        assert_eq!(matvecmul(x.clone(), y.clone()).gradient("x").eval(), ndarray::arr2(&[[0.0, 1.0], [0.0, 1.0]]).into_dyn());
-        assert_eq!(matvecmul(x.clone(), y.clone()).gradient("y").eval(), ndarray::arr1(&[2.0, 4.0]).into_dyn());
+        assert_eq!(
+            matvecmul(x.clone(), y.clone()).gradient("x").eval(),
+            ndarray::arr2(&[[0.0, 1.0], [0.0, 1.0]]).into_dyn()
+        );
+        assert_eq!(
+            matvecmul(x.clone(), y.clone()).gradient("y").eval(),
+            ndarray::arr1(&[2.0, 4.0]).into_dyn()
+        );
 
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))),
+        );
         let y = expr(ndarray::arr1(&[3.0, 5.0]));
-        assert_eq!(matvecmul(x.clone(), y).gradient("x").eval(), ndarray::arr2(&[[3.0, 5.0], [3.0, 5.0]]).into_dyn());
+        assert_eq!(
+            matvecmul(x.clone(), y).gradient("x").eval(),
+            ndarray::arr2(&[[3.0, 5.0], [3.0, 5.0]]).into_dyn()
+        );
 
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))),
+        );
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr1(&[3.0, 5.0]))));
-        assert_eq!(matvecmul(x.clone(), matvecmul(x.clone(), y.clone())).gradient("x").eval(), ndarray::arr2(&[[11.0, 31.0], [17.0, 41.0]]).into_dyn());
-        assert_eq!(matvecmul(x.clone(), matvecmul(x.clone(), y.clone())).gradient("y").eval(), ndarray::arr1(&[8.0, 14.0]).into_dyn());
+        assert_eq!(
+            matvecmul(x.clone(), matvecmul(x.clone(), y.clone()))
+                .gradient("x")
+                .eval(),
+            ndarray::arr2(&[[11.0, 31.0], [17.0, 41.0]]).into_dyn()
+        );
+        assert_eq!(
+            matvecmul(x.clone(), matvecmul(x.clone(), y.clone()))
+                .gradient("y")
+                .eval(),
+            ndarray::arr1(&[8.0, 14.0]).into_dyn()
+        );
     }
 }

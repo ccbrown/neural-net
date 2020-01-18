@@ -1,9 +1,12 @@
 extern crate byteorder;
-#[macro_use] extern crate log;
-#[macro_use] extern crate ndarray;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate ndarray;
 extern crate rand;
 extern crate reqwest;
-#[macro_use] extern crate simple_error;
+#[macro_use]
+extern crate simple_error;
 
 use std::error::Error;
 use std::rc::Rc;
@@ -15,7 +18,11 @@ pub struct LayerVariable {
 }
 
 pub trait Layer {
-    fn init(self: Box<Self>, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<dyn LayerInstance>;
+    fn init(
+        self: Box<Self>,
+        namespace: &str,
+        input_shape: &ndarray::IxDyn,
+    ) -> Box<dyn LayerInstance>;
 }
 
 pub trait LayerInstance {
@@ -30,7 +37,8 @@ pub trait LayerInstance {
     }
 
     fn output_shape(&self, input_shape: &ndarray::IxDyn) -> ndarray::IxDyn {
-        self.expression(algebra::expr(ndarray::Array::zeros(input_shape.clone()))).shape()
+        self.expression(algebra::expr(ndarray::Array::zeros(input_shape.clone())))
+            .shape()
     }
 }
 
@@ -42,11 +50,11 @@ pub trait Dataset {
     fn target(&mut self, i: usize) -> Result<ndarray::ArrayViewD<f32>, Box<dyn Error>>;
 }
 
-pub mod algebra;
 pub mod activations;
+pub mod algebra;
 pub mod datasets;
-pub mod initializers;
 pub mod graph;
+pub mod initializers;
 pub mod layers;
 pub mod losses;
 pub mod models;

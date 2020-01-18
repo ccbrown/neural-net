@@ -5,7 +5,11 @@ pub struct Sequential {
 }
 
 impl Layer for Sequential {
-    fn init(mut self: Box<Self>, namespace: &str, input_shape: &ndarray::IxDyn) -> Box<dyn LayerInstance> {
+    fn init(
+        mut self: Box<Self>,
+        namespace: &str,
+        input_shape: &ndarray::IxDyn,
+    ) -> Box<dyn LayerInstance> {
         let mut input_shape = input_shape.clone();
         let mut layers = Vec::new();
         let mut variables = Vec::new();
@@ -17,7 +21,7 @@ impl Layer for Sequential {
             }
             layers.push(instance);
         }
-        Box::new(super::Instance{
+        Box::new(super::Instance {
             expression: move |input| {
                 let mut result = input;
                 for layer in layers.iter() {

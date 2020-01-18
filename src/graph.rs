@@ -31,7 +31,7 @@ pub struct Node {
 
 impl Graph {
     pub fn new() -> Graph {
-        Graph{
+        Graph {
             nodes: Vec::new(),
             expr_to_node_ids: HashMap::new(),
             generation: 0,
@@ -50,11 +50,19 @@ impl Graph {
         match self.expr_to_node_ids.get(&expr.id()) {
             Some(&id) => id,
             None => {
-                let input_node_ids = expr.inputs().iter().map(|&input| self.add_impl(input.clone(), false)).collect();
+                let input_node_ids = expr
+                    .inputs()
+                    .iter()
+                    .map(|&input| self.add_impl(input.clone(), false))
+                    .collect();
                 let id = self.nodes.len();
                 self.expr_to_node_ids.insert(expr.id(), id);
-                let node = Node{
-                    inputs: expr.inputs().iter().map(|input| ndarray::Array::zeros(input.shape())).collect(),
+                let node = Node {
+                    inputs: expr
+                        .inputs()
+                        .iter()
+                        .map(|input| ndarray::Array::zeros(input.shape()))
+                        .collect(),
                     input_node_ids: input_node_ids,
                     output: ndarray::Array::zeros(expr.shape()),
                     expr: expr,
@@ -65,7 +73,7 @@ impl Graph {
                     self.top_level_node_ids.push(id);
                 }
                 id
-            },
+            }
         }
     }
 

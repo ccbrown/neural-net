@@ -1,5 +1,5 @@
-use std::fmt;
 use std::cell::RefCell;
+use std::fmt;
 use std::ops::DerefMut;
 use std::rc::Rc;
 
@@ -9,21 +9,24 @@ pub struct VariableValue(RefCell<ndarray::ArrayD<f32>>);
 
 impl VariableValue {
     pub fn new<S, D>(a: ndarray::ArrayBase<S, D>) -> VariableValue
-        where S: ndarray::Data<Elem=f32>,
-              D: ndarray::Dimension,
+    where
+        S: ndarray::Data<Elem = f32>,
+        D: ndarray::Dimension,
     {
         VariableValue(RefCell::new(a.into_owned().into_dyn()))
     }
 
     pub fn set<S, D>(&self, a: ndarray::ArrayBase<S, D>)
-        where S: ndarray::Data<Elem=f32>,
-              D: ndarray::Dimension,
+    where
+        S: ndarray::Data<Elem = f32>,
+        D: ndarray::Dimension,
     {
         self.0.replace(a.into_owned().into_dyn());
     }
 
     pub fn mutate<F>(&self, f: F)
-        where F: FnOnce(&mut ndarray::ArrayD<f32>)
+    where
+        F: FnOnce(&mut ndarray::ArrayD<f32>),
     {
         let mut r = self.0.borrow_mut();
         f(r.deref_mut())
@@ -61,11 +64,18 @@ impl ExprImpl for Variable {
         Expr::new(self.clone())
     }
 
-    fn accumulate_gradients(&self, output: Expr, gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
-        gradients.expressions.insert(self.name.clone(), match gradients.expressions.get(&self.name) {
-            Some(grad) => grad.clone() + output,
-            None => output,
-        });
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
+        gradients.expressions.insert(
+            self.name.clone(),
+            match gradients.expressions.get(&self.name) {
+                Some(grad) => grad.clone() + output,
+                None => output,
+            },
+        );
         vec![]
     }
 
@@ -81,7 +91,7 @@ impl fmt::Display for Variable {
 }
 
 pub fn v<T: Into<String>>(name: T, init: Rc<VariableValue>) -> Expr {
-    Expr::new(Variable{
+    Expr::new(Variable {
         name: name.into(),
         value: init,
     })
@@ -97,6 +107,9 @@ mod tests {
         assert_eq!(x.gradient("x").eval(), ndarray::arr0(1.0).into_dyn());
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::Array::zeros(3))));
-        assert_eq!(x.gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn());
+        assert_eq!(
+            x.gradient("x").eval(),
+            ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn()
+        );
     }
 }

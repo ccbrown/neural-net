@@ -27,7 +27,11 @@ impl ExprImpl for Ln {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
         vec![Some(output.clone() / self.expr.clone())]
     }
 
@@ -49,6 +53,9 @@ mod tests {
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!(format!("{}", (2.0 * x.clone()).ln().gradient("x")), "((1 / (2 * x)) * 2)");
+        assert_eq!(
+            format!("{}", (2.0 * x.clone()).ln().gradient("x")),
+            "((1 / (2 * x)) * 2)"
+        );
     }
 }

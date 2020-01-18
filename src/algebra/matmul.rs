@@ -50,8 +50,15 @@ impl ExprImpl for MatMul {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
-        vec![Some(matmul(output.clone(), self.b.transpose())), Some(matmul(self.a.transpose(), output.clone()))]
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
+        vec![
+            Some(matmul(output.clone(), self.b.transpose())),
+            Some(matmul(self.a.transpose(), output.clone())),
+        ]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
@@ -66,7 +73,7 @@ impl fmt::Display for MatMul {
 }
 
 pub fn matmul<A: Into<Expr>, B: Into<Expr>>(a: A, b: B) -> Expr {
-    Expr::new(MatMul{
+    Expr::new(MatMul {
         a: a.into(),
         b: b.into(),
     })

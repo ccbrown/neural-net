@@ -23,7 +23,11 @@ impl ExprImpl for Constant {
         super::expr(self.eval())
     }
 
-    fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+    fn accumulate_gradients(
+        &self,
+        _output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
         vec![]
     }
 
@@ -40,18 +44,19 @@ impl fmt::Display for Constant {
 
 impl From<f32> for Expr {
     fn from(f: f32) -> Expr {
-        Expr::new(Constant{
+        Expr::new(Constant {
             value: ndarray::arr0(f).into_dyn(),
         })
     }
 }
 
 impl<S1, D> From<ndarray::ArrayBase<S1, D>> for Expr
-    where S1: ndarray::Data<Elem=f32>,
-          D: ndarray::Dimension,
+where
+    S1: ndarray::Data<Elem = f32>,
+    D: ndarray::Dimension,
 {
     fn from(a: ndarray::ArrayBase<S1, D>) -> Expr {
-        Expr::new(Constant{
+        Expr::new(Constant {
             value: a.into_owned().into_dyn(),
         })
     }
