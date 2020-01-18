@@ -28,7 +28,11 @@ pub fn ones(shape: &ndarray::IxDyn) -> ndarray::ArrayD<f32> {
 pub fn copy(v: ndarray::ArrayD<f32>) -> impl Fn(&ndarray::IxDyn) -> ndarray::ArrayD<f32> {
     move |shape| {
         if *shape != v.dim() {
-            panic!("differing shapes for copy initializer: expected {:?}, got {:?}", v.dim(), shape);
+            panic!(
+                "differing shapes for copy initializer: expected {:?}, got {:?}",
+                v.dim(),
+                shape
+            );
         }
         v.clone()
     }

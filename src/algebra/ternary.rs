@@ -71,9 +71,11 @@ impl ExprImpl for Ternary {
             super::expr(self.eval())
         } else if self.condition.is_constant() {
             let condition = self.condition.propagate_constants();
-            (condition.clone() * self.true_expr.clone() + (super::expr(1.0) - condition) * self.false_expr.clone()).propagate_constants()
+            (condition.clone() * self.true_expr.clone()
+                + (super::expr(1.0) - condition) * self.false_expr.clone())
+            .propagate_constants()
         } else {
-            Expr::new(Self{
+            Expr::new(Self {
                 condition: self.condition.propagate_constants(),
                 true_expr: self.true_expr.propagate_constants(),
                 false_expr: self.false_expr.propagate_constants(),
@@ -81,8 +83,20 @@ impl ExprImpl for Ternary {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
-        vec![None, Some(ternary(self.condition.clone(), output.clone(), super::expr(0.0))), Some(ternary(self.condition.clone(), super::expr(0.0), output))]
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
+        vec![
+            None,
+            Some(ternary(
+                self.condition.clone(),
+                output.clone(),
+                super::expr(0.0),
+            )),
+            Some(ternary(self.condition.clone(), super::expr(0.0), output)),
+        ]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
@@ -92,12 +106,16 @@ impl ExprImpl for Ternary {
 
 impl fmt::Display for Ternary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({} ? {} : {})", self.condition, self.true_expr, self.false_expr)
+        write!(
+            f,
+            "({} ? {} : {})",
+            self.condition, self.true_expr, self.false_expr
+        )
     }
 }
 
 pub fn ternary(condition: Expr, true_expr: Expr, false_expr: Expr) -> Expr {
-    Expr::new(Ternary{
+    Expr::new(Ternary {
         condition: condition,
         true_expr: true_expr,
         false_expr: false_expr,

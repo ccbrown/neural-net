@@ -40,7 +40,11 @@ impl ExprImpl for ReduceSum {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
         vec![Some(super::broadcast_to(output, self.expr.shape()))]
     }
 
@@ -56,7 +60,7 @@ impl fmt::Display for ReduceSum {
 }
 
 pub fn reduce_sum<V: Into<Expr>>(expr: V, axes: Vec<usize>) -> Expr {
-    Expr::new(ReduceSum{
+    Expr::new(ReduceSum {
         expr: expr.into(),
         axes: axes,
     })
@@ -68,10 +72,25 @@ mod tests {
 
     #[test]
     fn test() {
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]))));
-        assert_eq!(reduce_sum(x.clone(), vec![1]).eval(), ndarray::arr2(&[[3.0], [3.0]]).into_dyn());
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr2(&[
+                [1.0, 1.0, 1.0],
+                [1.0, 1.0, 1.0],
+            ]))),
+        );
+        assert_eq!(
+            reduce_sum(x.clone(), vec![1]).eval(),
+            ndarray::arr2(&[[3.0], [3.0]]).into_dyn()
+        );
 
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
-        assert_eq!((reduce_sum(x.clone(), vec![1]) / 2.0).gradient("x").eval(), ndarray::arr2(&[[0.5, 0.5], [0.5, 0.5]]).into_dyn());
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))),
+        );
+        assert_eq!(
+            (reduce_sum(x.clone(), vec![1]) / 2.0).gradient("x").eval(),
+            ndarray::arr2(&[[0.5, 0.5], [0.5, 0.5]]).into_dyn()
+        );
     }
 }

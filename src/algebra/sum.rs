@@ -30,8 +30,14 @@ impl ExprImpl for Sum {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
-        vec![Some(output * super::expr(ndarray::Array::ones(self.expr.shape())))]
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
+        vec![Some(
+            output * super::expr(ndarray::Array::ones(self.expr.shape())),
+        )]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
@@ -51,10 +57,22 @@ mod tests {
 
     #[test]
     fn test() {
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
-        assert_eq!(x.sum().gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn());
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))),
+        );
+        assert_eq!(
+            x.sum().gradient("x").eval(),
+            ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn()
+        );
 
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 0.0, 0.0]))));
-        assert_eq!(x.exp().sum().gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn());
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 0.0, 0.0]))),
+        );
+        assert_eq!(
+            x.exp().sum().gradient("x").eval(),
+            ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn()
+        );
     }
 }
