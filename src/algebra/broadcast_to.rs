@@ -13,7 +13,10 @@ pub struct BroadcastTo {
 
 impl ExprImpl for BroadcastTo {
     fn eval_inputs(&self, inputs: &Vec<ndarray::ArrayD<f32>>) -> ndarray::ArrayD<f32> {
-        inputs[0].broadcast(self.shape.clone()).unwrap().into_owned()
+        inputs[0]
+            .broadcast(self.shape.clone())
+            .unwrap()
+            .into_owned()
     }
 
     fn shape(&self) -> ndarray::IxDyn {
@@ -32,7 +35,11 @@ impl ExprImpl for BroadcastTo {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
         let expr_shape = self.expr.shape();
         let missing = self.shape.ndim() - expr_shape.ndim();
         let mut reduction_axes: Vec<_> = (0..missing).collect();
@@ -41,7 +48,9 @@ impl ExprImpl for BroadcastTo {
                 reduction_axes.push(missing + i);
             }
         }
-        vec![Some(super::reduce_sum(output, reduction_axes).reshape(expr_shape))]
+        vec![Some(
+            super::reduce_sum(output, reduction_axes).reshape(expr_shape),
+        )]
     }
 
     fn inputs(&self) -> Vec<&Expr> {
@@ -56,7 +65,7 @@ impl fmt::Display for BroadcastTo {
 }
 
 pub fn broadcast_to<V: Into<Expr>>(expr: V, shape: ndarray::IxDyn) -> Expr {
-    Expr::new(BroadcastTo{
+    Expr::new(BroadcastTo {
         expr: expr.into(),
         shape: shape,
     })
@@ -69,7 +78,15 @@ mod tests {
     #[test]
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0]))));
-        assert_eq!(broadcast_to(x.clone(), ndarray::Ix2(3, 2).into_dyn()).eval(), ndarray::arr2(&[[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]).into_dyn());
-        assert_eq!(broadcast_to(x.clone(), ndarray::Ix2(3, 2).into_dyn()).gradient("x").eval(), ndarray::arr1(&[3.0, 3.0]).into_dyn());
+        assert_eq!(
+            broadcast_to(x.clone(), ndarray::Ix2(3, 2).into_dyn()).eval(),
+            ndarray::arr2(&[[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]).into_dyn()
+        );
+        assert_eq!(
+            broadcast_to(x.clone(), ndarray::Ix2(3, 2).into_dyn())
+                .gradient("x")
+                .eval(),
+            ndarray::arr1(&[3.0, 3.0]).into_dyn()
+        );
     }
 }

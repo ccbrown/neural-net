@@ -27,7 +27,7 @@ impl<R: Read> MNISTImageFile<R> {
         let number_of_images = file.read_u32::<BigEndian>()?;
         let number_of_rows = file.read_u32::<BigEndian>()?;
         let number_of_columns = file.read_u32::<BigEndian>()?;
-        Ok(MNISTImageFile{
+        Ok(MNISTImageFile {
             file: file,
             images_remaining: number_of_images as _,
             number_of_rows: number_of_rows as _,
@@ -41,7 +41,9 @@ impl<R: Read> Iterator for MNISTImageFile<R> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.images_remaining > 0 {
-            let mut image = unsafe { ndarray::Array::uninitialized((self.number_of_rows, self.number_of_columns)) };
+            let mut image = unsafe {
+                ndarray::Array::uninitialized((self.number_of_rows, self.number_of_columns))
+            };
             if let Err(err) = self.file.read_exact(image.as_slice_mut()?) {
                 return Some(Err(err));
             }
@@ -65,7 +67,7 @@ impl<R: Read> MNISTLabelFile<R> {
             bail!("invalid magic for mnist label file");
         }
         let number_of_labels = file.read_u32::<BigEndian>()?;
-        Ok(MNISTLabelFile{
+        Ok(MNISTLabelFile {
             bytes: file.bytes(),
             labels_remaining: number_of_labels as _,
         })
@@ -88,7 +90,7 @@ impl<R: Read> Iterator for MNISTLabelFile<R> {
 pub struct MNIST {
     images: Vec<ndarray::ArrayD<f32>>,
     labels: Vec<ndarray::ArrayD<f32>>,
-	target_shape: ndarray::IxDyn,
+    target_shape: ndarray::IxDyn,
 }
 
 impl MNIST {
@@ -112,37 +114,51 @@ impl MNIST {
             }
         }
 
-        let images: Vec<_> = images.into_iter().map(|x| x.unwrap().mapv(|v| v as f32 / 255.0).into_dyn()).collect();
-        let labels: Vec<_> = labels.into_iter().map(|x| ndarray::arr0(x.unwrap() as f32).into_dyn()).collect();
+        let images: Vec<_> = images
+            .into_iter()
+            .map(|x| x.unwrap().mapv(|v| v as f32 / 255.0).into_dyn())
+            .collect();
+        let labels: Vec<_> = labels
+            .into_iter()
+            .map(|x| ndarray::arr0(x.unwrap() as f32).into_dyn())
+            .collect();
 
         if images.len() != labels.len() {
-            bail!("mismatched image and label counts for mnist dataset ({} and {})", images.len(), labels.len());
+            bail!(
+                "mismatched image and label counts for mnist dataset ({} and {})",
+                images.len(),
+                labels.len()
+            );
         }
 
-        Ok(MNIST{
+        Ok(MNIST {
             images: images,
             labels: labels,
-			target_shape: ndarray::Ix0().into_dyn(),
+            target_shape: ndarray::Ix0().into_dyn(),
         })
     }
 
     // Transforms the targets into one-hot arrays.
     pub fn to_one_hot(self, categories: usize) -> MNIST {
-		let labels = self.labels.into_iter().map(|l| {
-            let mut one_hot = ndarray::Array::zeros(categories).into_dyn();
-            one_hot[*l.first().unwrap() as usize] = 1.0;
-            one_hot
-		}).collect();
-		MNIST{
-			images: self.images,
-			labels: labels,
-			target_shape: ndarray::Ix1(categories).into_dyn(),
-		}
+        let labels = self
+            .labels
+            .into_iter()
+            .map(|l| {
+                let mut one_hot = ndarray::Array::zeros(categories).into_dyn();
+                one_hot[*l.first().unwrap() as usize] = 1.0;
+                one_hot
+            })
+            .collect();
+        MNIST {
+            images: self.images,
+            labels: labels,
+            target_shape: ndarray::Ix1(categories).into_dyn(),
+        }
     }
 
-	pub fn target_shape(&self) -> ndarray::IxDyn {
-		self.target_shape.clone()
-	}
+    pub fn target_shape(&self) -> ndarray::IxDyn {
+        self.target_shape.clone()
+    }
 }
 
 impl Dataset for MNIST {
@@ -166,16 +182,8 @@ mod tests {
     #[test]
     fn test_mnist_image_file() {
         let file: Vec<u8> = vec![
-            0, 0, 8, 3,
-            0, 0, 0, 2,
-            0, 0, 0, 3,
-            0, 0, 0, 4,
-            1, 2, 3, 4,
-            5, 6, 7, 8,
-            9, 0, 1, 2,
-            1, 2, 3, 4,
-            5, 6, 7, 8,
-            9, 0, 1, 2,
+            0, 0, 8, 3, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 1,
+            2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2,
         ];
         let mut f = MNISTImageFile::new(&*file).unwrap();
         let image = f.next().unwrap().unwrap();
@@ -191,11 +199,7 @@ mod tests {
 
     #[test]
     fn test_mnist_label_file() {
-        let file: Vec<u8> = vec![
-            0, 0, 8, 1,
-            0, 0, 0, 4,
-            1, 2, 3, 4,
-        ];
+        let file: Vec<u8> = vec![0, 0, 8, 1, 0, 0, 0, 4, 1, 2, 3, 4];
         let f = MNISTLabelFile::new(&*file).unwrap();
         let mut count = 0;
         for (i, label) in f.enumerate() {
@@ -208,22 +212,10 @@ mod tests {
     #[test]
     fn test_mnist() {
         let images: Vec<u8> = vec![
-            0, 0, 8, 3,
-            0, 0, 0, 2,
-            0, 0, 0, 3,
-            0, 0, 0, 4,
-            1, 2, 3, 4,
-            5, 6, 7, 8,
-            9, 0, 1, 2,
-            1, 2, 3, 4,
-            5, 6, 7, 8,
-            9, 0, 1, 2,
+            0, 0, 8, 3, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 1,
+            2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2,
         ];
-        let labels: Vec<u8> = vec![
-            0, 0, 8, 1,
-            0, 0, 0, 2,
-            1, 2,
-        ];
+        let labels: Vec<u8> = vec![0, 0, 8, 1, 0, 0, 0, 2, 1, 2];
         let mut ds = MNIST::new(&*images, &*labels).unwrap();
         let label1 = ds.target(0).unwrap().into_shape(()).unwrap();
         assert_eq!(label1[()], 1.0);

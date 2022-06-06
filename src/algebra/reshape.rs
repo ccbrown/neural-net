@@ -28,7 +28,11 @@ impl ExprImpl for Reshape {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
         vec![Some(output.reshape(self.expr.shape()))]
     }
 
@@ -49,7 +53,13 @@ mod tests {
 
     #[test]
     fn test() {
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))));
-        assert_eq!(x.reshape(ndarray::Ix1(4)).gradient("x").eval(), ndarray::arr2(&[[1.0, 1.0], [1.0, 1.0]]).into_dyn());
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr2(&[[0.0, 1.0], [2.0, 3.0]]))),
+        );
+        assert_eq!(
+            x.reshape(ndarray::Ix1(4)).gradient("x").eval(),
+            ndarray::arr2(&[[1.0, 1.0], [1.0, 1.0]]).into_dyn()
+        );
     }
 }

@@ -29,14 +29,18 @@ impl Op {
 
 impl fmt::Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            Op::Less => "<",
-            Op::LessOrEqual => "<=",
-            Op::Greater => ">",
-            Op::GreaterOrEqual => ">=",
-            Op::Equal => "=",
-            Op::NotEqual => "!=",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Op::Less => "<",
+                Op::LessOrEqual => "<=",
+                Op::Greater => ">",
+                Op::GreaterOrEqual => ">=",
+                Op::Equal => "=",
+                Op::NotEqual => "!=",
+            }
+        )
     }
 }
 
@@ -59,7 +63,9 @@ impl ExprImpl for Cmp {
             left.mapv(|v| if self.op.cmp(v, right) { 1.0 } else { 0.0 })
         } else {
             let mut result = unsafe { ndarray::Array::uninitialized(self.shape()) };
-            ndarray::Zip::from(&mut result).and(left).and(right)
+            ndarray::Zip::from(&mut result)
+                .and(left)
+                .and(right)
                 .apply(|o, &l, &r| *o = if self.op.cmp(l, r) { 1.0 } else { 0.0 });
             result
         }
@@ -82,11 +88,19 @@ impl ExprImpl for Cmp {
         if self.is_constant() {
             super::expr(self.eval())
         } else {
-            cmp(self.left.propagate_constants(), self.op.clone(), self.right.propagate_constants())
+            cmp(
+                self.left.propagate_constants(),
+                self.op.clone(),
+                self.right.propagate_constants(),
+            )
         }
     }
 
-    fn accumulate_gradients(&self, _output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+    fn accumulate_gradients(
+        &self,
+        _output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
         panic!("gradients are not supported for comparisons")
     }
 
@@ -102,7 +116,7 @@ impl fmt::Display for Cmp {
 }
 
 pub fn cmp(left: Expr, op: Op, right: Expr) -> Expr {
-    Expr::new(Cmp{
+    Expr::new(Cmp {
         left: left,
         right: right,
         op: op,

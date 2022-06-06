@@ -47,7 +47,8 @@ impl ExprImpl for Add {
             }
             if self.right.is_constant() {
                 let right = self.right.eval();
-                if right == ndarray::Array::zeros(right.dim()) && self.shape() == self.left.shape() {
+                if right == ndarray::Array::zeros(right.dim()) && self.shape() == self.left.shape()
+                {
                     return self.left.propagate_constants();
                 }
             }
@@ -55,7 +56,11 @@ impl ExprImpl for Add {
         }
     }
 
-    fn accumulate_gradients(&self, output: Expr, _gradients: &mut super::Gradients) -> Vec<Option<Expr>> {
+    fn accumulate_gradients(
+        &self,
+        output: Expr,
+        _gradients: &mut super::Gradients,
+    ) -> Vec<Option<Expr>> {
         vec![Some(output.clone()), Some(output.clone())]
     }
 
@@ -73,7 +78,7 @@ impl fmt::Display for Add {
 impl<T: Into<Expr>> std::ops::Add<T> for Expr {
     type Output = Self;
     fn add(self, rhs: T) -> Self {
-        Expr::new(Add{
+        Expr::new(Add {
             left: self,
             right: rhs.into(),
         })
@@ -88,11 +93,17 @@ mod tests {
     fn test() {
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!((x.clone() + y).gradient("x").eval(), ndarray::arr0(1.0).into_dyn());
+        assert_eq!(
+            (x.clone() + y).gradient("x").eval(),
+            ndarray::arr0(1.0).into_dyn()
+        );
 
         let x = v("x", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
         let y = v("y", Rc::new(VariableValue::new(ndarray::arr0(0.0))));
-        assert_eq!((x + y.clone()).gradient("y").eval(), ndarray::arr0(1.0).into_dyn());
+        assert_eq!(
+            (x + y.clone()).gradient("y").eval(),
+            ndarray::arr0(1.0).into_dyn()
+        );
 
         let x = expr(ndarray::arr1(&[0.0, 1.0, 2.0]));
         let y = expr(ndarray::arr1(&[0.0, 1.0, 5.0]));
@@ -114,8 +125,14 @@ mod tests {
         let z = expr(ndarray::arr1(&[1.0, 1.0, 1.0]));
         assert_eq!((x + y).propagate_constants().eval(), z.eval());
 
-        let x = v("x", Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))));
+        let x = v(
+            "x",
+            Rc::new(VariableValue::new(ndarray::arr1(&[0.0, 1.0, 2.0]))),
+        );
         let y = expr(ndarray::arr1(&[0.0, 1.0, 5.0]));
-        assert_eq!((x.clone() + y).gradient("x").eval(), ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn());
+        assert_eq!(
+            (x.clone() + y).gradient("x").eval(),
+            ndarray::arr1(&[1.0, 1.0, 1.0]).into_dyn()
+        );
     }
 }

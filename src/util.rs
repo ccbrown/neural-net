@@ -18,4 +18,3 @@ pub fn download(url: &str, destination: &str) -> Result<(), Box<dyn Error>> {
     std::io::copy(&mut resp, &mut file)?;
     Ok(())
 }
-
